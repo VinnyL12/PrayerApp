@@ -4,7 +4,7 @@ namespace PrayerApp.Domain.Entities;
 
 /// <summary>
 /// Application user. IdentityUser supplies Email, PasswordHash, lockout fields, etc.;
-/// we only add what Prayer Hub needs. Keyed by Guid rather than Identity's default string.
+/// we only add what Prayer App needs. Keyed by Guid rather than Identity's default string.
 /// </summary>
 public class User : IdentityUser<Guid>
 {

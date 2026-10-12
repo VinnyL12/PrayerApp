@@ -1,6 +1,6 @@
-# Prayer Hub
+# Prayer App
 
-A cross-faith prayer and support hub. Users join topical communities, post prayer
+A cross-faith prayer and support app. Users join topical communities, post prayer
 requests, and others respond with a small set of preset acknowledgments.
 
 **Stack:** ASP.NET Core Web API · Blazor WebAssembly · EF Core · SQL Server · ASP.NET Core Identity + JWT
