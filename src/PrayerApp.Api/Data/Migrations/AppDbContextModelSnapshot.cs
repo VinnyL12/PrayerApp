@@ -372,8 +372,8 @@ namespace PrayerApp.Api.Data.Migrations
 
                     b.HasIndex("AuthorId");
 
-                    b.HasIndex("CommunityId", "Status", "CreatedAt")
-                        .IsDescending(false, false, true);
+                    b.HasIndex("CommunityId", "Status", "CreatedAt", "Id")
+                        .IsDescending(false, false, true, true);
 
                     b.ToTable("Posts", t =>
                         {

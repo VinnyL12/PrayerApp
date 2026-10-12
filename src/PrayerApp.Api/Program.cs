@@ -1,9 +1,14 @@
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using PrayerApp.Api.Acknowledgments;
 using PrayerApp.Api.Auth;
+using PrayerApp.Api.Communities;
 using PrayerApp.Api.Data;
+using PrayerApp.Api.Posts;
 using PrayerApp.Domain.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +18,11 @@ builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddValidation();
 builder.Services.AddSingleton(TimeProvider.System);
+
+// Enums travel as names ("PrayingForYou") instead of numbers. The database still stores
+// ints; this only affects JSON. Integer values are rejected so clients can't send 42.
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
 
 // Locally this comes from user secrets; in a container, from the
 // ConnectionStrings__Default environment variable.
@@ -64,7 +74,10 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
         };
     });
 
-builder.Services.AddAuthorization();
+// Secure by default: every endpoint requires a signed-in user unless it explicitly opts
+// out with AllowAnonymous(). Forgetting an attribute fails closed, not open.
+builder.Services.AddAuthorizationBuilder()
+    .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddScoped<RefreshTokenService>();
 
@@ -82,7 +95,7 @@ var app = builder.Build();
 // Configure the HTTP request pipeline (think: Express middleware, in order).
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi().AllowAnonymous();
 }
 
 app.UseHttpsRedirection();
@@ -90,7 +103,10 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapAuthEndpoints();
+app.MapCommunityEndpoints();
+app.MapPostEndpoints();
+app.MapAcknowledgmentEndpoints();
 
 app.Run();

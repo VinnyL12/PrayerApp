@@ -15,11 +15,12 @@ public static class AuthEndpoints
     {
         var group = app.MapGroup("/auth").WithTags("Auth");
 
-        group.MapPost("/register", Register);
-        group.MapPost("/login", Login);
-        group.MapPost("/refresh", Refresh);
-        group.MapPost("/logout", Logout);
-        group.MapGet("/me", Me).RequireAuthorization();
+        // Everything else in the API requires a token (fallback policy in Program.cs).
+        group.MapPost("/register", Register).AllowAnonymous();
+        group.MapPost("/login", Login).AllowAnonymous();
+        group.MapPost("/refresh", Refresh).AllowAnonymous();
+        group.MapPost("/logout", Logout).AllowAnonymous();
+        group.MapGet("/me", Me);
 
         return app;
     }
