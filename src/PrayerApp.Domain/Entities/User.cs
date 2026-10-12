@@ -19,4 +19,6 @@ public class User : IdentityUser<Guid>
     public ICollection<Acknowledgment> Acknowledgments { get; } = [];
 
     public ICollection<Notification> Notifications { get; } = [];
+
+    public ICollection<RefreshToken> RefreshTokens { get; } = [];
 }
