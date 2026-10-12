@@ -10,6 +10,9 @@ public static class AcknowledgmentTypeExtensions
         AcknowledgmentType.HoldingYouInMyThoughts => "Holding you in my thoughts",
         AcknowledgmentType.YoureNotAlone => "You're not alone",
         AcknowledgmentType.SendingLove => "Sending love",
+        AcknowledgmentType.CelebratingWithYou => "Celebrating with you",
+        AcknowledgmentType.RejoicingWithYou => "Rejoicing with you",
+        AcknowledgmentType.ThankfulWithYou => "So thankful with you",
         // Enums are just named ints: (AcknowledgmentType)42 compiles, so the
         // compiler can never treat this switch as exhaustive. Fail loudly instead.
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown acknowledgment type."),

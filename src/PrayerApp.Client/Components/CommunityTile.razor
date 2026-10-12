@@ -1,0 +1,38 @@
+@* A community card with a fixed structure (icon, name, two-line description, footer), so
+   every tile in a grid is the same height no matter how long its text is. *@
+<article class="community-tile @(Community.IsMember ? "is-member" : "")">
+    <a class="community-tile-link" href="/communities/@Community.Id" aria-label="Open @Community.Name">
+        <CommunityIcon Category="Community.Category" />
+        <h2>@Community.Name</h2>
+        <p>@Community.Description</p>
+    </a>
+
+    <footer class="community-tile-footer">
+        <span class="member-count">@Community.MemberCount @(Community.MemberCount == 1 ? "member" : "members")</span>
+
+        @if (OnToggle.HasDelegate)
+        {
+            @if (Community.IsMember)
+            {
+                <button class="button button-quiet button-small" disabled="@Busy" @onclick="() => OnToggle.InvokeAsync(Community)">Leave</button>
+            }
+            else
+            {
+                <button class="button button-small" disabled="@Busy" @onclick="() => OnToggle.InvokeAsync(Community)">Join</button>
+            }
+        }
+        else
+        {
+            <a class="tile-open" href="/communities/@Community.Id">Open →</a>
+        }
+    </footer>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public CommunityDto Community { get; set; } = default!;
+
+    /// <summary>When set, the footer shows Join/Leave; otherwise an "Open" link.</summary>
+    [Parameter] public EventCallback<CommunityDto> OnToggle { get; set; }
+
+    [Parameter] public bool Busy { get; set; }
+}

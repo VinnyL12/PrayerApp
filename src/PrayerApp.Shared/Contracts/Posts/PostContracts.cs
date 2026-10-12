@@ -21,9 +21,11 @@ public sealed record UpdatePostStatusRequest
 
 /// <param name="AuthorDisplayName">Null when the post is anonymous and the viewer isn't the author.</param>
 /// <param name="MyAcknowledgment">The viewer's own response to this post, if any.</param>
+/// <param name="CommunityCategory">Decides which responses fit (see AcknowledgmentPolicy).</param>
 public sealed record PostDto(
     int Id,
     int CommunityId,
+    CommunityCategory CommunityCategory,
     string Body,
     PostStatus Status,
     bool IsUrgent,

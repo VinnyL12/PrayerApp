@@ -5,9 +5,35 @@
 
 <AuthorizeView>
     <Authorized>
-        <header class="page-header">
-            <h1>Your communities</h1>
-            <p>Pick up where you left off.</p>
+        <section class="welcome">
+            <div class="welcome-text">
+                <p class="welcome-eyebrow">@Greeting()</p>
+                <h1>@FirstName(context.User.Identity?.Name)</h1>
+                <p>Thank you for showing up for each other today.</p>
+            </div>
+
+            <dl class="welcome-stats">
+                <div>
+                    <dt>Communities</dt>
+                    <dd>@(_communities?.Count.ToString() ?? "–")</dd>
+                </div>
+                <div>
+                    <dt>Posts</dt>
+                    <dd>@(_myPosts?.Count.ToString() ?? "–")</dd>
+                </div>
+                <div>
+                    <dt>Responses</dt>
+                    <dd>@(_myPosts?.Sum(p => p.AcknowledgmentCount).ToString() ?? "–")</dd>
+                </div>
+            </dl>
+        </section>
+
+        <header class="section-header">
+            <div>
+                <h2>Your communities</h2>
+                <p>Where you share and support.</p>
+            </div>
+            <a class="button button-quiet button-small" href="/communities">Browse all</a>
         </header>
 
         @if (_communities is null)
@@ -23,19 +49,12 @@
         }
         else
         {
-            <div class="grid">
+            <div class="tile-grid">
                 @foreach (var community in _communities)
                 {
-                    <a class="card community-card" href="/communities/@community.Id">
-                        <h2>@community.Name</h2>
-                        <p class="muted">@community.Description</p>
-                        <div class="row">
-                            <span class="member-count">@community.MemberCount @(community.MemberCount == 1 ? "member" : "members")</span>
-                        </div>
-                    </a>
+                    <CommunityTile @key="community.Id" Community="community" />
                 }
             </div>
-            <p><a href="/communities">Browse all communities →</a></p>
         }
     </Authorized>
     <NotAuthorized>
@@ -65,7 +84,7 @@
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8Z" /></svg>
                 </div>
                 <h2>Kind by design</h2>
-                <p>People respond with a few gentle words like "Praying for you". There are no comments, so there's no room for negativity.</p>
+                <p>People respond with a few gentle words that fit the moment. There are no comments, so there's no room for negativity.</p>
             </div>
             <div class="card feature">
                 <div class="feature-icon" aria-hidden="true">
@@ -82,6 +101,7 @@
     [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
 
     private List<CommunityDto>? _communities;
+    private List<PostDto>? _myPosts;
     private string? _error;
 
     protected override async Task OnInitializedAsync()
@@ -91,8 +111,24 @@
             return;
         }
 
-        var result = await Api.GetCommunitiesAsync();
-        _communities = result.Value?.Where(c => c.IsMember).ToList();
-        _error = result.Error;
+        // Both requests in flight at once, like Promise.all.
+        var communitiesTask = Api.GetCommunitiesAsync();
+        var postsTask = Api.GetMyPostsAsync();
+        await Task.WhenAll(communitiesTask, postsTask);
+
+        var communities = await communitiesTask;
+        _communities = communities.Value?.Where(c => c.IsMember).ToList();
+        _myPosts = (await postsTask).Value;
+        _error = communities.Error;
     }
+
+    private static string Greeting() => DateTime.Now.Hour switch
+    {
+        < 12 => "Good morning",
+        < 17 => "Good afternoon",
+        _ => "Good evening",
+    };
+
+    private static string FirstName(string? name) =>
+        name?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "friend";
 }

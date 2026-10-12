@@ -282,13 +282,6 @@ h1:focus {
     margin: 0;
 }
 
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 1rem;
-    margin: 1.25rem 0;
-}
-
 .row {
     display: flex;
     flex-wrap: wrap;
@@ -334,58 +327,6 @@ h1:focus {
     margin-bottom: 1rem;
 }
 
-.community-card {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    margin: 0;
-    padding: 1.25rem;
-    color: inherit;
-    text-decoration: none;
-    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
-}
-
-.community-card::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 4px;
-    border-radius: var(--radius) var(--radius) 0 0;
-    background: var(--primary);
-    opacity: 0;
-    transition: opacity 0.15s;
-}
-
-.community-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-    border-color: var(--border-strong);
-}
-
-.community-card:hover::before {
-    opacity: 1;
-}
-
-.community-card a {
-    color: inherit;
-    text-decoration: none;
-}
-
-.community-card h2 {
-    margin: 0;
-}
-
-.community-card p {
-    font-size: 0.92rem;
-    margin: 0;
-}
-
-.community-card .row {
-    margin-top: auto;
-    padding-top: 0.9rem;
-}
-
 .community-header {
     display: flex;
     justify-content: space-between;
@@ -398,6 +339,10 @@ h1:focus {
 
 .community-header p {
     margin: 0.2rem 0;
+}
+
+.community-header-text {
+    flex: 1;
 }
 
 .member-count {
@@ -653,6 +598,279 @@ a.post-link:hover {
     color: var(--on-primary);
     font-size: 0.7rem;
     font-weight: 700;
+}
+
+/* ---- Notification bell ------------------------------------------------------- */
+
+.nav a.bell {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+    color: var(--primary);
+}
+
+.nav a.bell:hover {
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+
+.nav a.bell.active {
+    background: var(--primary);
+    color: var(--on-primary);
+}
+
+.bell .badge {
+    position: absolute;
+    top: 3px;
+    right: 1px;
+    min-width: 1.1rem;
+    height: 1.1rem;
+    padding: 0 0.3rem;
+    font-size: 0.65rem;
+    background: var(--urgent);
+    color: #fff;
+    box-shadow: 0 0 0 2px var(--bg);
+}
+
+/* ---- Welcome banner (signed-in home) ----------------------------------------- */
+
+.welcome {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2rem;
+    margin-bottom: 2.75rem;
+    padding: 2.5rem 2.5rem 2.25rem;
+    border-radius: var(--radius-lg);
+    background:
+        radial-gradient(circle at 85% 15%, rgba(255, 255, 255, 0.16) 0, transparent 45%),
+        radial-gradient(circle at 10% 110%, rgba(255, 255, 255, 0.10) 0, transparent 40%),
+        linear-gradient(135deg, #564786 0%, #45386d 55%, #352a55 100%);
+    color: #fff;
+    box-shadow: var(--shadow-lg);
+}
+
+.welcome h1 {
+    margin: 0.1rem 0 0.4rem;
+    color: #fff;
+    font-size: clamp(2.2rem, 5vw, 3rem);
+}
+
+.welcome p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.welcome-eyebrow {
+    font-size: 0.82rem;
+    font-weight: 650;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.welcome-stats {
+    display: flex;
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.welcome-stats div {
+    min-width: 7.5rem;
+    padding: 0.9rem 1.1rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(6px);
+}
+
+.welcome-stats dt {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.welcome-stats dd {
+    margin: 0.15rem 0 0;
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.section-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.section-header h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.section-header p {
+    margin: 0.15rem 0 0;
+    color: var(--muted);
+    font-size: 0.93rem;
+}
+
+/* ---- Page hero (communities) ------------------------------------------------- */
+
+.page-hero {
+    position: relative;
+    max-width: 40rem;
+    margin: 0 auto 2.5rem;
+    padding: 1.5rem 0 0;
+    text-align: center;
+}
+
+.page-hero::before {
+    content: "";
+    position: absolute;
+    inset: -2.25rem 0 auto;
+    height: 260px;
+    z-index: -1;
+    background: radial-gradient(ellipse at 50% 0%, var(--primary-soft) 0%, transparent 70%);
+}
+
+.page-hero h1 {
+    font-size: clamp(2.2rem, 5vw, 2.9rem);
+    margin-bottom: 0.6rem;
+}
+
+.page-hero p {
+    margin: 0;
+    color: var(--text-soft);
+    font-size: 1.05rem;
+}
+
+/* ---- Community tiles --------------------------------------------------------- */
+
+/* Flexbox (not grid) so a short last row is centered: 7 tiles lay out 3 + 3 + 1,
+   with the last one in the middle instead of stranded on the left. */
+.tile-grid {
+    --tile-gap: 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--tile-gap);
+}
+
+.community-tile {
+    flex: 0 0 calc((100% - 2 * var(--tile-gap)) / 3);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+}
+
+.community-tile::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 4px;
+    background: var(--primary);
+    opacity: 0;
+    transition: opacity 0.18s;
+}
+
+.community-tile:hover {
+    transform: translateY(-3px);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-lg);
+}
+
+.community-tile:hover::before,
+.community-tile.is-member::before {
+    opacity: 1;
+}
+
+.community-tile-link {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 1.5rem 1.5rem 1rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+.community-tile-link:hover {
+    color: inherit;
+}
+
+.community-tile h2 {
+    margin: 0.6rem 0 0;
+    font-size: 1.12rem;
+}
+
+/* Exactly two lines of description, so every tile has the same shape. */
+.community-tile p {
+    margin: 0;
+    min-height: calc(2 * 1.55em);
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.community-tile-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: 3.6rem;
+    padding: 0.75rem 1.5rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface-sunken);
+}
+
+.tile-open {
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.community-icon {
+    width: 46px;
+    height: 46px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+
+.community-icon-lg {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+}
+
+.community-tile.is-member .community-icon {
+    background: var(--primary);
+    color: var(--on-primary);
 }
 
 /* ---- Forms ------------------------------------------------------------------- */
@@ -955,7 +1173,18 @@ input[type="checkbox"] {
 
 /* ---- Small screens ----------------------------------------------------------- */
 
+@media (max-width: 860px) {
+    .community-tile { flex-basis: calc((100% - var(--tile-gap)) / 2); }
+}
+
 @media (max-width: 640px) {
+    .community-tile { flex-basis: 100%; }
+    .welcome { padding: 1.75rem 1.5rem; gap: 1.5rem; }
+    .welcome-stats { width: 100%; }
+    .welcome-stats div { flex: 1; min-width: 0; padding: 0.75rem; }
+    .welcome-stats dd { font-size: 1.6rem; }
+    .welcome-stats dt { font-size: 0.66rem; letter-spacing: 0.02em; }
+    .community-icon-lg { display: none; }
     h1 { font-size: 1.65rem; }
     .page { padding-top: 1.5rem; }
     .topbar-inner { padding: 0.6rem 1rem; gap: 0.5rem 0.75rem; }

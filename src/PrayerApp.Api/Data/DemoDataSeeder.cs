@@ -135,6 +135,13 @@ public static class DemoDataSeeder
             HoursAgo: 60, Status: PostStatus.Answered, Acks: 6, AckSpreadHours: 30),
     ];
 
+    private static CommunityCategory CategoryOf(string communityName) => communityName switch
+    {
+        "Grief & Loss" => CommunityCategory.Grief,
+        "Gratitude & Answered Prayers" => CommunityCategory.Gratitude,
+        _ => CommunityCategory.General,
+    };
+
     public static async Task SeedAsync(IServiceProvider services, string password, CancellationToken ct = default)
     {
         await using var scope = services.CreateAsyncScope();
@@ -219,7 +226,8 @@ public static class DemoDataSeeder
                 // Spread responses across the window, never into the future.
                 var offsetHours = spec.AckSpreadHours * (i + 1) / (supporters.Count + 1);
                 var ackedAt = createdAt.AddHours(Math.Min(offsetHours, spec.HoursAgo * 0.95));
-                var type = Enum.GetValues<AcknowledgmentType>()[random.Next(5)];
+                var allowed = AcknowledgmentPolicy.AllowedFor(CategoryOf(spec.Community), spec.Status);
+                var type = allowed[random.Next(allowed.Count)];
 
                 post.Acknowledgments.Add(new Acknowledgment
                 {

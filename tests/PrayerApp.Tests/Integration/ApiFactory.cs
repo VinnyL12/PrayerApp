@@ -53,7 +53,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         });
 
     /// <summary>A fresh, empty community, for tests that need a predictable feed or member count.</summary>
-    public async Task<int> CreateCommunityAsync()
+    public async Task<int> CreateCommunityAsync(CommunityCategory category = CommunityCategory.General)
     {
         await using var scope = Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -62,7 +62,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
             Name = $"Test community {Guid.NewGuid():N}",
             Description = "Created by an integration test.",
-            Category = CommunityCategory.General,
+            Category = category,
             CreatedAt = DateTimeOffset.UtcNow,
         };
 

@@ -42,7 +42,7 @@
         else if (Post.Status != PostStatus.Archived)
         {
             <div class="ack-picker" role="group" aria-label="Respond to this post">
-                @foreach (var type in Enum.GetValues<AcknowledgmentType>())
+                @foreach (var type in AcknowledgmentPolicy.AllowedFor(Post.CommunityCategory, Post.Status))
                 {
                     <button class="chip" disabled="@_busy" @onclick="() => AcknowledgeAsync(type)">@type.ToLabel()</button>
                 }

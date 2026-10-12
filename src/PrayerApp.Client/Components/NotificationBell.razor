@@ -1,17 +1,29 @@
 @implements IDisposable
 @inject NotificationState Notifications
 
-<NavLink href="/notifications" class="bell">
-    Notifications
+<NavLink href="/notifications" class="bell" title="Notifications" aria-label="@AriaLabel">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
     @if (Notifications.UnreadCount > 0)
     {
-        <span class="badge" aria-label="@Notifications.UnreadCount unread">@Notifications.UnreadCount</span>
+        <span class="badge" aria-hidden="true">@(Notifications.UnreadCount > 99 ? "99+" : Notifications.UnreadCount)</span>
     }
 </NavLink>
 
 @code {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(30);
     private readonly CancellationTokenSource _stop = new();
+
+    // The icon has no text, so screen readers get the full meaning from the label.
+    private string AriaLabel => Notifications.UnreadCount switch
+    {
+        0 => "Notifications",
+        1 => "Notifications, 1 unread",
+        var n => $"Notifications, {n} unread",
+    };
 
     protected override async Task OnInitializedAsync()
     {

@@ -11,7 +11,8 @@
 else
 {
     <header class="community-header">
-        <div>
+        <CommunityIcon Category="_community.Category" Large="true" />
+        <div class="community-header-text">
             <h1>@_community.Name</h1>
             <p class="muted">@_community.Description</p>
             <p class="member-count">@_community.MemberCount @(_community.MemberCount == 1 ? "member" : "members")</p>

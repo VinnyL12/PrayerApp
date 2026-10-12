@@ -23,6 +23,7 @@ public static class PostQueries
         posts.Select(p => new PostDto(
             p.Id,
             p.CommunityId,
+            p.Community.Category,
             p.Body,
             p.Status,
             p.IsUrgent,

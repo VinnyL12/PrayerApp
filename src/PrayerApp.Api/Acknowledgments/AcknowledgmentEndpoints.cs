@@ -43,7 +43,8 @@ public static class AcknowledgmentEndpoints
             });
         }
 
-        var post = await db.Posts.AsNoTracking().Where(p => p.Id == postId).VisibleTo(me).SingleOrDefaultAsync(ct);
+        var post = await db.Posts.AsNoTracking().Include(p => p.Community)
+            .Where(p => p.Id == postId).VisibleTo(me).SingleOrDefaultAsync(ct);
         if (post is null)
         {
             return TypedResults.NotFound();
@@ -55,6 +56,16 @@ public static class AcknowledgmentEndpoints
                 return TypedResults.Problem("You can't acknowledge your own post.", statusCode: StatusCodes.Status403Forbidden);
             case AcknowledgmentDenial.PostClosed:
                 return TypedResults.Problem("This post is archived.", statusCode: StatusCodes.Status409Conflict);
+        }
+
+        // Same rule the client uses to choose which buttons to show; enforced here because
+        // a client can always send any value it likes.
+        if (!AcknowledgmentPolicy.IsAllowed(request.Type, post.Community.Category, post.Status))
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+            {
+                [nameof(request.Type)] = [$"\"{request.Type.ToLabel()}\" isn't an available response for this post."],
+            });
         }
 
         // Friendly fast path for the common case (user taps twice, seconds apart). It can't

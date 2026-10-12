@@ -4,42 +4,27 @@
 
 <PageTitle>Communities · Prayer App</PageTitle>
 
-<header class="page-header">
-    <h1>Communities</h1>
-    <p>Join the ones that fit. You'll see posts from communities you belong to.</p>
+<header class="page-hero">
+    <span class="eyebrow">Communities</span>
+    <h1>Find your people</h1>
+    <p>Join the communities that fit what you're carrying. You'll see posts only from the ones you belong to.</p>
 </header>
 
 @if (_error is not null)
 {
-    <p class="error">@_error</p>
+    <p class="error center">@_error</p>
 }
 
 @if (_communities is null)
 {
-    <p class="muted">Loading…</p>
+    <p class="muted center">Loading…</p>
 }
 else
 {
-    <div class="grid">
+    <div class="tile-grid">
         @foreach (var community in _communities)
         {
-            <div class="card community-card">
-                <a href="/communities/@community.Id"><h2>@community.Name</h2></a>
-                <p class="muted">@community.Description</p>
-                <div class="row">
-                    <span class="member-count">@community.MemberCount @(community.MemberCount == 1 ? "member" : "members")</span>
-                    @if (community.IsMember)
-                    {
-                        <button class="button button-quiet button-small" disabled="@(_busyId == community.Id)"
-                                @onclick="() => ToggleAsync(community)">Leave</button>
-                    }
-                    else
-                    {
-                        <button class="button button-small" disabled="@(_busyId == community.Id)"
-                                @onclick="() => ToggleAsync(community)">Join</button>
-                    }
-                </div>
-            </div>
+            <CommunityTile @key="community.Id" Community="community" OnToggle="ToggleAsync" Busy="@(_busyId == community.Id)" />
         }
     </div>
 }

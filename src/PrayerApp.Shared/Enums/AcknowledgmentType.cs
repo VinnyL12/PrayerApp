@@ -12,4 +12,9 @@ public enum AcknowledgmentType
     HoldingYouInMyThoughts = 3,
     YoureNotAlone = 4,
     SendingLove = 5,
+
+    // Celebration responses, for gratitude posts and answered prayers.
+    CelebratingWithYou = 6,
+    RejoicingWithYou = 7,
+    ThankfulWithYou = 8,
 }
