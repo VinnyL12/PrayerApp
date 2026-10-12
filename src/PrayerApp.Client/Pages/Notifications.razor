@@ -1,0 +1,77 @@
+@page "/notifications"
+@attribute [Authorize]
+@inject PrayerApiClient Api
+@inject NotificationState State
+@inject NavigationManager Navigation
+@inject TimeProvider Time
+
+<PageTitle>Notifications · Prayer Hub</PageTitle>
+
+<header class="row">
+    <h1>Notifications</h1>
+    @if (_list is { UnreadCount: > 0 })
+    {
+        <button class="button button-quiet button-small" @onclick="MarkAllReadAsync">Mark all read</button>
+    }
+</header>
+
+@if (_error is not null)
+{
+    <p class="error">@_error</p>
+}
+
+@if (_list is null)
+{
+    <p class="muted">Loading…</p>
+}
+else if (_list.Items.Count == 0)
+{
+    <p class="muted center">Nothing yet. When someone responds to your posts, you'll see it here.</p>
+}
+else
+{
+    <ul class="notifications">
+        @foreach (var n in _list.Items)
+        {
+            <li @key="n.Id">
+                <button class="card notification @(n.IsRead ? "" : "unread")" @onclick="() => OpenAsync(n)">
+                    <span>Someone responded to “@n.PostExcerpt”</span>
+                    <span class="muted small">@TimeFormat.Ago(n.CreatedAt, Time.GetUtcNow())</span>
+                </button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private NotificationList? _list;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetNotificationsAsync();
+        _list = result.Value;
+        _error = result.Error;
+    }
+
+    private async Task OpenAsync(NotificationDto notification)
+    {
+        if (!notification.IsRead)
+        {
+            await Api.MarkNotificationReadAsync(notification.Id);
+            await State.RefreshAsync();
+        }
+
+        Navigation.NavigateTo($"/posts/{notification.PostId}");
+    }
+
+    private async Task MarkAllReadAsync()
+    {
+        var result = await Api.MarkAllNotificationsReadAsync();
+        _error = result.Error;
+        await LoadAsync();
+        await State.RefreshAsync();
+    }
+}

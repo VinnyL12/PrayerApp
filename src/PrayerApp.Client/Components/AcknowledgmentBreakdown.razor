@@ -1,0 +1,39 @@
+@inject PrayerApiClient Api
+
+@if (_summary is null)
+{
+    <p class="muted small">@(_error ?? "Loading responses…")</p>
+}
+else if (_summary.Total == 0)
+{
+    <p class="muted small">No responses yet.</p>
+}
+else
+{
+    <ul class="breakdown">
+        @foreach (var (type, count) in _summary.ByType.Where(kv => kv.Value > 0).OrderByDescending(kv => kv.Value))
+        {
+            <li>
+                <span>@type.ToLabel()</span>
+                <span class="bar" style="--share: @(100 * count / _summary.Total)%"></span>
+                <strong>@count</strong>
+            </li>
+        }
+    </ul>
+    <p class="muted small">You see how many people responded, never who.</p>
+}
+
+@code {
+    [Parameter, EditorRequired] public int PostId { get; set; }
+
+    private AcknowledgmentSummary? _summary;
+    private string? _error;
+
+    // Like useEffect(..., [postId]): runs on first render and whenever PostId changes.
+    protected override async Task OnParametersSetAsync()
+    {
+        var result = await Api.GetAcknowledgmentSummaryAsync(PostId);
+        _summary = result.Value;
+        _error = result.Error;
+    }
+}

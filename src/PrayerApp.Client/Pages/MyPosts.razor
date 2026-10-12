@@ -1,0 +1,97 @@
+@page "/me/posts"
+@attribute [Authorize]
+@inject PrayerApiClient Api
+@inject IJSRuntime JS
+
+<PageTitle>My posts · Prayer Hub</PageTitle>
+
+<h1>My posts</h1>
+<p class="muted">Mark a request answered when it's resolved, or archive it to remove it from feeds.</p>
+
+@if (_error is not null)
+{
+    <p class="error">@_error</p>
+}
+
+@if (_posts is null)
+{
+    <p class="muted">Loading…</p>
+}
+else if (_posts.Count == 0)
+{
+    <div class="card empty">
+        <p>You haven't posted yet.</p>
+        <a class="button" href="/communities">Find a community</a>
+    </div>
+}
+else
+{
+    @foreach (var post in _posts)
+    {
+        <div @key="post.Id" class="my-post">
+            <PostCard Post="post" />
+            <div class="row actions">
+                @if (post.Status == PostStatus.Active)
+                {
+                    <button class="button button-small" @onclick="() => SetStatusAsync(post, PostStatus.Answered)">Mark answered</button>
+                }
+                @if (post.Status != PostStatus.Archived)
+                {
+                    <button class="button button-quiet button-small" @onclick="() => SetStatusAsync(post, PostStatus.Archived)">Archive</button>
+                }
+                <button class="link-button small" @onclick="() => ToggleBreakdown(post.Id)">
+                    @(_expanded.Contains(post.Id) ? "Hide responses" : "See responses")
+                </button>
+            </div>
+            @if (_expanded.Contains(post.Id))
+            {
+                <div class="card">
+                    <AcknowledgmentBreakdown PostId="post.Id" />
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private List<PostDto>? _posts;
+    private string? _error;
+
+    // A HashSet gives O(1) "is this one expanded?" checks while rendering the list.
+    private readonly HashSet<int> _expanded = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Api.GetMyPostsAsync();
+        _posts = result.Value;
+        _error = result.Error;
+    }
+
+    private void ToggleBreakdown(int postId)
+    {
+        if (!_expanded.Remove(postId))
+        {
+            _expanded.Add(postId);
+        }
+    }
+
+    private async Task SetStatusAsync(PostDto post, PostStatus status)
+    {
+        if (status == PostStatus.Archived
+            && !await JS.InvokeAsync<bool>("confirm", "Archive this post? It will leave community feeds and can't be reopened."))
+        {
+            return;
+        }
+
+        _error = null;
+        var result = await Api.UpdateStatusAsync(post.Id, status);
+        if (result.Succeeded)
+        {
+            _posts![_posts.IndexOf(post)] = result.Value!;
+        }
+        else
+        {
+            _error = result.Error;
+        }
+    }
+}

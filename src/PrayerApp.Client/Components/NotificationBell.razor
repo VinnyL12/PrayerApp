@@ -1,0 +1,50 @@
+@implements IDisposable
+@inject NotificationState Notifications
+
+<NavLink href="/notifications" class="bell">
+    Notifications
+    @if (Notifications.UnreadCount > 0)
+    {
+        <span class="badge" aria-label="@Notifications.UnreadCount unread">@Notifications.UnreadCount</span>
+    }
+</NavLink>
+
+@code {
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(30);
+    private readonly CancellationTokenSource _stop = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Notifications.Changed += OnChanged;
+        await Notifications.RefreshAsync();
+        _ = PollAsync();
+    }
+
+    // Like setInterval in a useEffect, with the cleanup in Dispose. The bell only exists
+    // while signed in (it's inside <Authorized>), so polling stops on sign-out.
+    private async Task PollAsync()
+    {
+        using var timer = new PeriodicTimer(PollInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_stop.Token))
+            {
+                await Notifications.RefreshAsync();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    // Changed can fire from outside this component's render cycle, so marshal the
+    // re-render through InvokeAsync.
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Notifications.Changed -= OnChanged;
+        _stop.Cancel();
+        _stop.Dispose();
+    }
+}

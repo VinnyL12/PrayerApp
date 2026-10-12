@@ -1,0 +1,62 @@
+@inject PrayerApiClient Api
+
+<div class="card composer">
+    @* EditForm + DataAnnotationsValidator run the same [Required]/[MaxLength] attributes
+       the API enforces, from the shared CreatePostRequest. *@
+    <EditForm Model="_request" OnValidSubmit="SubmitAsync">
+        <DataAnnotationsValidator />
+
+        <label class="visually-hidden" for="post-body">Your prayer request</label>
+        <InputTextArea id="post-body" class="input" rows="4" @bind-Value="_request.Body"
+                       placeholder="Share what's on your heart…" />
+        <ValidationMessage For="() => _request.Body" class="error small" />
+
+        <div class="composer-row">
+            <label class="check">
+                <InputCheckbox @bind-Value="_request.IsAnonymous" />
+                Post anonymously
+            </label>
+            <label class="check">
+                <InputCheckbox @bind-Value="_request.IsUrgent" />
+                Urgent
+            </label>
+            <span class="muted small counter">@(_request.Body?.Length ?? 0) / 2000</span>
+            <button type="submit" class="button" disabled="@_busy">@(_busy ? "Posting…" : "Post")</button>
+        </div>
+
+        @if (_error is not null)
+        {
+            <p class="error small">@_error</p>
+        }
+    </EditForm>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int CommunityId { get; set; }
+    [Parameter] public EventCallback<PostDto> OnPosted { get; set; }
+
+    private CreatePostRequest _request = NewRequest();
+    private bool _busy;
+    private string? _error;
+
+    private static CreatePostRequest NewRequest() => new() { Body = "" };
+
+    private async Task SubmitAsync()
+    {
+        _busy = true;
+        _error = null;
+
+        var result = await Api.CreatePostAsync(CommunityId, _request);
+        if (result.Succeeded)
+        {
+            _request = NewRequest();
+            await OnPosted.InvokeAsync(result.Value!);
+        }
+        else
+        {
+            _error = result.Error;
+        }
+
+        _busy = false;
+    }
+}

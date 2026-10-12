@@ -1,0 +1,62 @@
+@page "/login"
+@inject AuthService Auth
+@inject NavigationManager Navigation
+
+<PageTitle>Sign in · Prayer Hub</PageTitle>
+
+<section class="auth-card card">
+    <h1>Welcome back</h1>
+    <p class="muted">Sign in to see your communities.</p>
+
+    <EditForm Model="_request" OnValidSubmit="SubmitAsync">
+        <DataAnnotationsValidator />
+
+        <label for="email">Email</label>
+        <InputText id="email" class="input" type="email" autocomplete="email" @bind-Value="_request.Email" />
+        <ValidationMessage For="() => _request.Email" class="error small" />
+
+        <label for="password">Password</label>
+        <InputText id="password" class="input" type="password" autocomplete="current-password" @bind-Value="_request.Password" />
+        <ValidationMessage For="() => _request.Password" class="error small" />
+
+        @if (_error is not null)
+        {
+            <p class="error" role="alert">@_error</p>
+        }
+
+        <button type="submit" class="button button-block" disabled="@_busy">@(_busy ? "Signing in…" : "Sign in")</button>
+    </EditForm>
+
+    <p class="muted small center">New here? <a href="/register">Create an account</a></p>
+</section>
+
+@code {
+    // Binds ?returnUrl=... from the query string, like useSearchParams().
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+
+    private readonly LoginRequest _request = new() { Email = "", Password = "" };
+    private bool _busy;
+    private string? _error;
+
+    private async Task SubmitAsync()
+    {
+        _busy = true;
+        _error = null;
+
+        var result = await Auth.LoginAsync(_request);
+        if (result.Succeeded)
+        {
+            Navigation.NavigateTo(SafeReturnUrl(ReturnUrl));
+        }
+        else
+        {
+            _error = result.Error;
+            _busy = false;
+        }
+    }
+
+    // Only allow same-site paths: "//evil.com" or "https://evil.com" would turn the
+    // login page into an open redirect usable in phishing links.
+    internal static string SafeReturnUrl(string? url) =>
+        url is not null && url.StartsWith('/') && !url.StartsWith("//") && !url.StartsWith("/\\") ? url : "/";
+}

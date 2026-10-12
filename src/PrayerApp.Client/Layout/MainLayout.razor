@@ -1,3 +1,41 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@inject AuthService Auth
+@inject NavigationManager Navigation
 
-@Body
+<header class="topbar">
+    <div class="topbar-inner">
+        <a class="brand" href="/">Prayer Hub</a>
+
+        <AuthorizeView>
+            <Authorized>
+                <nav class="nav">
+                    <NavLink href="/communities">Communities</NavLink>
+                    <NavLink href="/me/posts">My posts</NavLink>
+                    <NotificationBell />
+                </nav>
+                <div class="account">
+                    <span class="muted">@context.User.Identity?.Name</span>
+                    <button class="link-button" @onclick="LogoutAsync">Sign out</button>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <nav class="nav">
+                    <NavLink href="/login">Sign in</NavLink>
+                    <NavLink href="/register" class="button button-small">Join</NavLink>
+                </nav>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</header>
+
+<main class="page">
+    @Body
+</main>
+
+@code {
+    private async Task LogoutAsync()
+    {
+        await Auth.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+}

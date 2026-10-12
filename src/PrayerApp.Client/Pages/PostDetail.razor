@@ -1,0 +1,38 @@
+@page "/posts/{Id:int}"
+@attribute [Authorize]
+@inject PrayerApiClient Api
+
+<PageTitle>Post · Prayer Hub</PageTitle>
+
+@if (_post is null)
+{
+    <p class="@(_error is null ? "muted" : "error")">@(_error ?? "Loading…")</p>
+}
+else
+{
+    <p><a href="/communities/@_post.CommunityId">← Back to community</a></p>
+
+    <PostCard Post="_post" PostChanged="p => _post = p" ShowLink="false" />
+
+    @if (_post.IsMine)
+    {
+        <section class="card">
+            <h2>Responses</h2>
+            <AcknowledgmentBreakdown PostId="_post.Id" />
+        </section>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private PostDto? _post;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var result = await Api.GetPostAsync(Id);
+        _post = result.Value;
+        _error = result.Error;
+    }
+}

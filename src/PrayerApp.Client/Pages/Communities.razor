@@ -1,0 +1,80 @@
+@page "/communities"
+@attribute [Authorize]
+@inject PrayerApiClient Api
+
+<PageTitle>Communities · Prayer Hub</PageTitle>
+
+<h1>Communities</h1>
+<p class="muted">Join the ones that fit. You'll see posts from communities you belong to.</p>
+
+@if (_error is not null)
+{
+    <p class="error">@_error</p>
+}
+
+@if (_communities is null)
+{
+    <p class="muted">Loading…</p>
+}
+else
+{
+    <div class="grid">
+        @foreach (var community in _communities)
+        {
+            <div class="card community-card">
+                <a href="/communities/@community.Id"><h2>@community.Name</h2></a>
+                <p class="muted">@community.Description</p>
+                <div class="row">
+                    <span class="muted small">@community.MemberCount @(community.MemberCount == 1 ? "member" : "members")</span>
+                    @if (community.IsMember)
+                    {
+                        <button class="button button-quiet button-small" disabled="@(_busyId == community.Id)"
+                                @onclick="() => ToggleAsync(community)">Leave</button>
+                    }
+                    else
+                    {
+                        <button class="button button-small" disabled="@(_busyId == community.Id)"
+                                @onclick="() => ToggleAsync(community)">Join</button>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<CommunityDto>? _communities;
+    private string? _error;
+    private int? _busyId;
+
+    // Like useEffect(() => { load() }, []): runs once when the page first renders.
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetCommunitiesAsync();
+        _communities = result.Value;
+        _error = result.Error;
+    }
+
+    private async Task ToggleAsync(CommunityDto community)
+    {
+        _busyId = community.Id;
+        _error = null;
+
+        var result = community.IsMember
+            ? await Api.LeaveAsync(community.Id)
+            : await Api.JoinAsync(community.Id);
+
+        if (result.Succeeded)
+        {
+            await LoadAsync();
+        }
+        else
+        {
+            _error = result.Error;
+        }
+
+        _busyId = null;
+    }
+}

@@ -1,0 +1,151 @@
+@page "/communities/{Id:int}"
+@attribute [Authorize]
+@inject PrayerApiClient Api
+
+<PageTitle>@(_community?.Name ?? "Community") · Prayer Hub</PageTitle>
+
+@if (_community is null)
+{
+    <p class="@(_error is null ? "muted" : "error")">@(_error ?? "Loading…")</p>
+}
+else
+{
+    <header class="community-header">
+        <div>
+            <h1>@_community.Name</h1>
+            <p class="muted">@_community.Description</p>
+            <p class="muted small">@_community.MemberCount @(_community.MemberCount == 1 ? "member" : "members")</p>
+        </div>
+        @if (_community.IsMember)
+        {
+            <button class="button button-quiet button-small" disabled="@_busy" @onclick="LeaveAsync">Leave</button>
+        }
+    </header>
+
+    @if (!_community.IsMember)
+    {
+        <div class="card empty">
+            <p>Join this community to read and share prayer requests.</p>
+            <button class="button" disabled="@_busy" @onclick="JoinAsync">Join @_community.Name</button>
+        </div>
+    }
+    else
+    {
+        <PostComposer CommunityId="Id" OnPosted="OnPosted" />
+
+        @if (_error is not null)
+        {
+            <p class="error">@_error</p>
+        }
+
+        @if (_posts.Count == 0 && !_loading)
+        {
+            <p class="muted center">No posts yet. Be the first to share.</p>
+        }
+
+        @foreach (var post in _posts)
+        {
+            @* @key helps Blazor match list items across renders, like key={post.id} in React. *@
+            <PostCard @key="post.Id" Post="post" PostChanged="ReplacePost" />
+        }
+
+        @if (_nextCursor is not null)
+        {
+            <button class="button button-quiet button-block" disabled="@_loading" @onclick="LoadMoreAsync">
+                @(_loading ? "Loading…" : "Load more")
+            </button>
+        }
+    }
+}
+
+@code {
+    // Route parameter, like useParams().id. Blazor parses it to int because of {Id:int}.
+    [Parameter] public int Id { get; set; }
+
+    private CommunityDto? _community;
+    private readonly List<PostDto> _posts = [];
+    private string? _nextCursor;
+    private string? _error;
+    private bool _loading;
+    private bool _busy;
+
+    // Runs when the route parameter changes too (navigating community → community reuses
+    // this component instance), unlike OnInitializedAsync which runs once.
+    protected override async Task OnParametersSetAsync()
+    {
+        _community = null;
+        _posts.Clear();
+        _nextCursor = null;
+        _error = null;
+
+        var community = await Api.GetCommunityAsync(Id);
+        _community = community.Value;
+        _error = community.Error;
+
+        if (_community?.IsMember == true)
+        {
+            await LoadMoreAsync();
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        _loading = true;
+
+        var page = await Api.GetFeedAsync(Id, _nextCursor);
+        if (page.Succeeded)
+        {
+            _posts.AddRange(page.Value!.Posts);
+            _nextCursor = page.Value.NextCursor;
+        }
+        else
+        {
+            _error = page.Error;
+        }
+
+        _loading = false;
+    }
+
+    private void OnPosted(PostDto post) => _posts.Insert(0, post);
+
+    private void ReplacePost(PostDto updated)
+    {
+        var index = _posts.FindIndex(p => p.Id == updated.Id);
+        if (index >= 0)
+        {
+            _posts[index] = updated;
+        }
+    }
+
+    private async Task JoinAsync()
+    {
+        _busy = true;
+        var result = await Api.JoinAsync(Id);
+        _busy = false;
+
+        if (result.Succeeded)
+        {
+            await OnParametersSetAsync();
+        }
+        else
+        {
+            _error = result.Error;
+        }
+    }
+
+    private async Task LeaveAsync()
+    {
+        _busy = true;
+        var result = await Api.LeaveAsync(Id);
+        _busy = false;
+
+        if (result.Succeeded)
+        {
+            await OnParametersSetAsync();
+        }
+        else
+        {
+            _error = result.Error;
+        }
+    }
+}

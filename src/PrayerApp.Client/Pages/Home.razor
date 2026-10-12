@@ -1,7 +1,68 @@
-﻿@page "/"
+@page "/"
+@inject PrayerApiClient Api
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Prayer Hub</PageTitle>
 
-<h1>Hello, world!</h1>
+<AuthorizeView>
+    <Authorized>
+        <h1>Your communities</h1>
 
-Welcome to your new app.
+        @if (_communities is null)
+        {
+            <p class="muted">@(_error ?? "Loading…")</p>
+        }
+        else if (_communities.Count == 0)
+        {
+            <div class="card empty">
+                <p>You haven't joined any communities yet.</p>
+                <a class="button" href="/communities">Browse communities</a>
+            </div>
+        }
+        else
+        {
+            <div class="grid">
+                @foreach (var community in _communities)
+                {
+                    <a class="card community-card" href="/communities/@community.Id">
+                        <h2>@community.Name</h2>
+                        <p class="muted">@community.Description</p>
+                    </a>
+                }
+            </div>
+            <p><a href="/communities">Browse all communities →</a></p>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <section class="hero">
+            <h1>Ask for support. Offer it back.</h1>
+            <p class="lead">
+                Prayer Hub is a small, private place to share what you're carrying and let others
+                know you're not alone. Open to every faith, and kind by design: people respond
+                with a few gentle words, never comments.
+            </p>
+            <div class="hero-actions">
+                <a class="button" href="/register">Create an account</a>
+                <a class="button button-quiet" href="/login">Sign in</a>
+            </div>
+        </section>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private List<CommunityDto>? _communities;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if ((await AuthState).User.Identity?.IsAuthenticated != true)
+        {
+            return;
+        }
+
+        var result = await Api.GetCommunitiesAsync();
+        _communities = result.Value?.Where(c => c.IsMember).ToList();
+        _error = result.Error;
+    }
+}

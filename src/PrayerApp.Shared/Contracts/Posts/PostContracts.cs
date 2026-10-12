@@ -5,18 +5,18 @@ namespace PrayerApp.Shared.Contracts.Posts;
 
 public sealed record CreatePostRequest
 {
-    [Required, MaxLength(2000)]
-    public required string Body { get; init; }
+    [Required(ErrorMessage = "Write something before posting."), MaxLength(2000)]
+    public required string Body { get; set; }
 
-    public bool IsUrgent { get; init; }
+    public bool IsUrgent { get; set; }
 
-    public bool IsAnonymous { get; init; }
+    public bool IsAnonymous { get; set; }
 }
 
 public sealed record UpdatePostStatusRequest
 {
     [Required]
-    public required PostStatus Status { get; init; }
+    public required PostStatus Status { get; set; }
 }
 
 /// <param name="AuthorDisplayName">Null when the post is anonymous and the viewer isn't the author.</param>

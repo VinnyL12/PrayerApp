@@ -2,25 +2,29 @@ using System.ComponentModel.DataAnnotations;
 
 namespace PrayerApp.Shared.Contracts.Auth;
 
+// Request types use { get; set; } rather than { get; init; } so Blazor forms can bind to
+// them directly. The payoff: the same [Required]/[MaxLength] attributes validate in the
+// browser (instant feedback) and on the server (the real enforcement).
+
 public sealed record RegisterRequest
 {
     [Required, EmailAddress, MaxLength(256)]
-    public required string Email { get; init; }
+    public required string Email { get; set; }
 
     [Required, MinLength(8), MaxLength(128)]
-    public required string Password { get; init; }
+    public required string Password { get; set; }
 
-    [Required, MaxLength(50)]
-    public required string DisplayName { get; init; }
+    [Required, MaxLength(50), Display(Name = "Display name")]
+    public required string DisplayName { get; set; }
 }
 
 public sealed record LoginRequest
 {
     [Required, EmailAddress]
-    public required string Email { get; init; }
+    public required string Email { get; set; }
 
     [Required]
-    public required string Password { get; init; }
+    public required string Password { get; set; }
 }
 
 /// <summary>

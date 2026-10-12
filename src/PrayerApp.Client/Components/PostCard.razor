@@ -1,0 +1,105 @@
+@inject PrayerApiClient Api
+@inject TimeProvider Time
+
+<article class="card post @(Post.IsUrgent ? "post-urgent" : "")">
+    <header class="post-meta">
+        <span class="author">@AuthorLabel</span>
+        <span class="muted">· @TimeFormat.Ago(Post.CreatedAt, Time.GetUtcNow())</span>
+        @if (Post.IsUrgent)
+        {
+            <span class="tag tag-urgent">Urgent</span>
+        }
+        @if (Post.Status == PostStatus.Answered)
+        {
+            <span class="tag tag-answered">Answered</span>
+        }
+        @if (Post.Status == PostStatus.Archived)
+        {
+            <span class="tag">Archived</span>
+        }
+    </header>
+
+    @if (ShowLink)
+    {
+        <a class="post-body post-link" href="/posts/@Post.Id">@Post.Body</a>
+    }
+    else
+    {
+        <p class="post-body">@Post.Body</p>
+    }
+
+    <footer class="post-footer">
+        <span class="muted">@ResponseCount</span>
+
+        @if (Post.IsMine)
+        {
+            <span class="muted small">Your post</span>
+        }
+        else if (Post.MyAcknowledgment is { } mine)
+        {
+            <span class="acknowledged">✓ @mine.ToLabel()</span>
+        }
+        else if (Post.Status != PostStatus.Archived)
+        {
+            <div class="ack-picker" role="group" aria-label="Respond to this post">
+                @foreach (var type in Enum.GetValues<AcknowledgmentType>())
+                {
+                    <button class="chip" disabled="@_busy" @onclick="() => AcknowledgeAsync(type)">@type.ToLabel()</button>
+                }
+            </div>
+        }
+    </footer>
+
+    @if (_error is not null)
+    {
+        <p class="error small">@_error</p>
+    }
+</article>
+
+@code {
+    // [Parameter] is a prop. EventCallback is a callback prop (onChange={...}).
+    [Parameter, EditorRequired] public PostDto Post { get; set; } = default!;
+    [Parameter] public EventCallback<PostDto> PostChanged { get; set; }
+    [Parameter] public bool ShowLink { get; set; } = true;
+
+    private bool _busy;
+    private string? _error;
+
+    private string AuthorLabel => (Post.IsMine, Post.IsAnonymous) switch
+    {
+        (true, true) => "You (posted anonymously)",
+        (true, false) => "You",
+        _ => Post.AuthorDisplayName ?? "Anonymous",
+    };
+
+    private string ResponseCount => Post.AcknowledgmentCount switch
+    {
+        0 => "No responses yet",
+        1 => "1 person responded",
+        var n => $"{n} people responded",
+    };
+
+    private async Task AcknowledgeAsync(AcknowledgmentType type)
+    {
+        _busy = true;
+        _error = null;
+
+        var result = await Api.AcknowledgeAsync(Post.Id, type);
+        if (result.Succeeded)
+        {
+            // Records are immutable; "with" makes an updated copy, like {...post, count}.
+            // The parent owns the list, so hand the new version up rather than mutating.
+            await PostChanged.InvokeAsync(Post with
+            {
+                AcknowledgmentCount = result.Value!.AcknowledgmentCount,
+                MyAcknowledgment = type,
+            });
+        }
+        else
+        {
+            _error = result.Error;
+        }
+
+        _busy = false;
+    }
+}

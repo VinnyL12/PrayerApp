@@ -6,7 +6,7 @@ namespace PrayerApp.Shared.Contracts.Acknowledgments;
 public sealed record AcknowledgeRequest
 {
     [Required]
-    public required AcknowledgmentType Type { get; init; }
+    public required AcknowledgmentType Type { get; set; }
 }
 
 public sealed record AcknowledgmentResult(int PostId, AcknowledgmentType Type, int AcknowledgmentCount);
