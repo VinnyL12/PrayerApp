@@ -101,6 +101,22 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
 
 var app = builder.Build();
 
+// Local development conveniences: apply pending migrations on startup, and optionally
+// load demo data so a fresh database opens onto a populated app.
+if (app.Environment.IsDevelopment())
+{
+    await using (var scope = app.Services.CreateAsyncScope())
+    {
+        await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+    }
+
+    if (app.Configuration.GetValue<bool>("Demo:SeedOnStartup"))
+    {
+        await DemoDataSeeder.SeedAsync(app.Services,
+            app.Configuration["Demo:Password"] ?? throw new InvalidOperationException("Demo:Password is not set."));
+    }
+}
+
 // Configure the HTTP request pipeline (think: Express middleware, in order).
 if (app.Environment.IsDevelopment())
 {

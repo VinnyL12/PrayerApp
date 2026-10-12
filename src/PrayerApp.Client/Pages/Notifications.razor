@@ -20,23 +20,28 @@
     <p class="error">@_error</p>
 }
 
-@if (_list is null)
+@if (_groups is null)
 {
     <p class="muted">Loading…</p>
 }
-else if (_list.Items.Count == 0)
+else if (_groups.Count == 0)
 {
-    <p class="muted center">Nothing yet. When someone responds to your posts, you'll see it here.</p>
+    <div class="card empty">
+        <p>Nothing yet. When someone responds to your posts, you'll see it here.</p>
+    </div>
 }
 else
 {
     <ul class="notifications">
-        @foreach (var n in _list.Items)
+        @foreach (var group in _groups)
         {
-            <li @key="n.Id">
-                <button class="card notification @(n.IsRead ? "" : "unread")" @onclick="() => OpenAsync(n)">
-                    <span>Someone responded to “@n.PostExcerpt”</span>
-                    <span class="muted small time">@TimeFormat.Ago(n.CreatedAt, Time.GetUtcNow())</span>
+            <li @key="group.PostId">
+                <button class="card notification @(group.UnreadCount > 0 ? "unread" : "")" @onclick="() => OpenAsync(group)">
+                    <span>
+                        @Headline(group)
+                        <span class="notification-excerpt">“@group.Excerpt”</span>
+                    </span>
+                    <span class="muted small time">@TimeFormat.Ago(group.Latest, Time.GetUtcNow())</span>
                 </button>
             </li>
         }
@@ -44,7 +49,12 @@ else
 }
 
 @code {
+    /// <summary>All notifications about one post, collapsed into a single row.</summary>
+    private sealed record NotificationGroup(
+        int PostId, string Excerpt, int Count, int UnreadCount, DateTimeOffset Latest, IReadOnlyList<NotificationDto> Items);
+
     private NotificationList? _list;
+    private List<NotificationGroup>? _groups;
     private string? _error;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
@@ -54,17 +64,39 @@ else
         var result = await Api.GetNotificationsAsync();
         _list = result.Value;
         _error = result.Error;
+
+        // Group by post (a hash-based GroupBy, O(n)), then order groups by their most
+        // recent activity so the list still reads newest-first.
+        _groups = _list?.Items
+            .GroupBy(n => n.PostId)
+            .Select(g => new NotificationGroup(
+                g.Key,
+                g.First().PostExcerpt,
+                g.Count(),
+                g.Count(n => !n.IsRead),
+                g.Max(n => n.CreatedAt),
+                g.ToList()))
+            .OrderByDescending(g => g.Latest)
+            .ToList();
     }
 
-    private async Task OpenAsync(NotificationDto notification)
+    private static string Headline(NotificationGroup group)
     {
-        if (!notification.IsRead)
+        var count = group.UnreadCount > 0 ? group.UnreadCount : group.Count;
+        var fresh = group.UnreadCount > 0 ? "new " : "";
+        return count == 1 ? $"1 {fresh}response to" : $"{count} {fresh}responses to";
+    }
+
+    private async Task OpenAsync(NotificationGroup group)
+    {
+        var unread = group.Items.Where(n => !n.IsRead).ToList();
+        if (unread.Count > 0)
         {
-            await Api.MarkNotificationReadAsync(notification.Id);
+            await Task.WhenAll(unread.Select(n => Api.MarkNotificationReadAsync(n.Id)));
             await State.RefreshAsync();
         }
 
-        Navigation.NavigateTo($"/posts/{notification.PostId}");
+        Navigation.NavigateTo($"/posts/{group.PostId}");
     }
 
     private async Task MarkAllReadAsync()

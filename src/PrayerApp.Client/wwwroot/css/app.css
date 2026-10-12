@@ -130,6 +130,12 @@ a:hover {
     color: var(--primary-hover);
 }
 
+/* Blazor's FocusOnNavigate moves focus to the page's h1 after navigation so screen
+   readers announce the new page; that programmatic focus shouldn't draw a ring. */
+h1:focus {
+    outline: none;
+}
+
 :focus-visible {
     outline: 3px solid var(--focus-ring);
     outline-offset: 2px;
@@ -496,17 +502,26 @@ a.post-link:hover {
 .tag-urgent { background: var(--urgent-soft); color: var(--urgent); }
 .tag-answered { background: var(--answered-soft); color: var(--answered); }
 
-.my-post {
-    margin-bottom: 1.75rem;
+.post-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px dashed var(--border);
 }
 
-.my-post .card {
-    margin-bottom: 0.6rem;
+.post-actions .link-button {
+    margin-left: auto;
+    font-size: 0.88rem;
 }
 
-.my-post .actions {
-    justify-content: flex-start;
-    margin: 0 0 0.6rem;
+.post-actions-panel {
+    margin-top: 0.85rem;
+    padding: 1rem 1.1rem 0.4rem;
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
 }
 
 /* ---- Composer ---------------------------------------------------------------- */
@@ -596,6 +611,13 @@ a.post-link:hover {
 .notification:hover {
     border-color: var(--border-strong);
     box-shadow: var(--shadow-lg);
+}
+
+.notification-excerpt {
+    display: block;
+    margin-top: 0.15rem;
+    color: var(--muted);
+    font-weight: 400;
 }
 
 .notification .time {

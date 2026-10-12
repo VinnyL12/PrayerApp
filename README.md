@@ -5,7 +5,13 @@ requests, and others respond with a small set of preset acknowledgments.
 
 **Stack:** ASP.NET Core Web API · Blazor WebAssembly · EF Core · SQL Server · ASP.NET Core Identity + JWT
 
-> Work in progress. Full architecture write-up to come.
+**Highlights**
+- Feed ranked by recency, 24-hour response velocity and urgency, with top-k selection on a bounded heap
+- Stable cursor pagination while scores change underneath it
+- Rotating refresh tokens in an httpOnly cookie, with reuse (theft) detection
+- Race-safe counters and one-response-per-user enforced by the database, proven by concurrency tests
+- Asynchronous notification pipeline on `Channel<T>` and a hosted `BackgroundService`
+- 63 tests, including integration tests against a real SQL Server via Testcontainers
 
 ## Running locally
 
@@ -27,17 +33,29 @@ Prerequisites: [.NET 10 SDK](https://dotnet.microsoft.com/download) and
    dotnet user-secrets set "Jwt:SigningKey" "$(openssl rand -base64 64)" --project src/PrayerApp.Api
    ```
 
-3. **Create the database**
-   ```bash
-   dotnet tool restore
-   dotnet ef database update --project src/PrayerApp.Api
-   ```
-
-4. **Run**
+3. **Run** (two terminals)
    ```bash
    dotnet run --project src/PrayerApp.Api --launch-profile http      # http://localhost:5160
    dotnet run --project src/PrayerApp.Client --launch-profile http   # http://localhost:5137
    ```
+   In Development the API applies migrations on startup, so there's no separate database step.
+
+## Demo data
+
+In Development the API seeds sample users, posts and responses on first start
+(`Demo:SeedOnStartup` in `src/PrayerApp.Api/appsettings.Development.json`), so the app
+opens onto a living feed. Sign in at http://localhost:5137 with:
+
+| Email | Password |
+|---|---|
+| `demo@prayerapp.local` | `PrayerDemo2026` |
+
+Seven other demo users (`maria@`, `james@`, `priya@`, `daniel@`, `ruth@`, `samuel@`, `hana@`
+`prayerapp.local`) share the same password, which makes it easy to try both sides of a flow
+in two browser windows. These accounts exist only in your local database.
+
+To start over with a fresh database: `docker compose down -v && docker compose up -d`,
+then restart the API.
 
 ## Design notes
 

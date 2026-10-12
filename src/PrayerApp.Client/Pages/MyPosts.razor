@@ -30,28 +30,29 @@ else
 {
     @foreach (var post in _posts)
     {
-        <div @key="post.Id" class="my-post">
-            <PostCard Post="post" />
-            <div class="row actions">
-                @if (post.Status == PostStatus.Active)
-                {
-                    <button class="button button-small" @onclick="() => SetStatusAsync(post, PostStatus.Answered)">Mark answered</button>
-                }
-                @if (post.Status != PostStatus.Archived)
-                {
-                    <button class="button button-quiet button-small" @onclick="() => SetStatusAsync(post, PostStatus.Archived)">Archive</button>
-                }
-                <button class="link-button small" @onclick="() => ToggleBreakdown(post.Id)">
-                    @(_expanded.Contains(post.Id) ? "Hide responses" : "See responses")
-                </button>
-            </div>
-            @if (_expanded.Contains(post.Id))
-            {
-                <div class="card">
-                    <AcknowledgmentBreakdown PostId="post.Id" />
+        <PostCard @key="post.Id" Post="post">
+            <Actions>
+                <div class="post-actions">
+                    @if (post.Status == PostStatus.Active)
+                    {
+                        <button class="button button-small" @onclick="() => SetStatusAsync(post, PostStatus.Answered)">Mark answered</button>
+                    }
+                    @if (post.Status != PostStatus.Archived)
+                    {
+                        <button class="button button-quiet button-small" @onclick="() => SetStatusAsync(post, PostStatus.Archived)">Archive</button>
+                    }
+                    <button class="link-button" @onclick="() => ToggleBreakdown(post.Id)">
+                        @(_expanded.Contains(post.Id) ? "Hide responses" : "See responses")
+                    </button>
                 </div>
-            }
-        </div>
+                @if (_expanded.Contains(post.Id))
+                {
+                    <div class="post-actions-panel">
+                        <AcknowledgmentBreakdown PostId="post.Id" />
+                    </div>
+                }
+            </Actions>
+        </PostCard>
     }
 }
 
