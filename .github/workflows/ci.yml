@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      # Not a real database: Program.cs requires a connection string to start, and the
+      # EF tools start the app to discover the DbContext. Nothing here connects to it.
+      ConnectionStrings__Default: "Server=localhost;Database=ci-placeholder;TrustServerCertificate=True"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: |
+          dotnet restore
+          dotnet tool restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release -warnaserror
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release
+
+      # Fails if someone changed an entity or configuration without adding a migration.
+      - name: Check for missing migrations
+        run: dotnet ef migrations has-pending-model-changes --project src/PrayerApp.Api --no-build --configuration Release
