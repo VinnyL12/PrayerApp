@@ -8,8 +8,10 @@ using PrayerApp.Api.Acknowledgments;
 using PrayerApp.Api.Auth;
 using PrayerApp.Api.Communities;
 using PrayerApp.Api.Data;
+using PrayerApp.Api.Notifications;
 using PrayerApp.Api.Posts;
 using PrayerApp.Domain.Entities;
+using PrayerApp.Domain.Ranking;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +33,13 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
         "Connection string 'Default' not found. See README: dotnet user-secrets set ...");
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
+
+builder.Services.AddOptions<RankingOptions>().BindConfiguration("Ranking");
+
+// Notification pipeline: one shared queue, drained by a hosted background service that
+// starts and stops with the app.
+builder.Services.AddSingleton<NotificationQueue>();
+builder.Services.AddHostedService<NotificationProcessor>();
 
 // --- Auth ---------------------------------------------------------------------------
 
@@ -108,5 +117,6 @@ app.MapAuthEndpoints();
 app.MapCommunityEndpoints();
 app.MapPostEndpoints();
 app.MapAcknowledgmentEndpoints();
+app.MapNotificationEndpoints();
 
 app.Run();

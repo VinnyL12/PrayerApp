@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using PrayerApp.Api.Common;
 using PrayerApp.Api.Data;
 using PrayerApp.Domain.Entities;
+using PrayerApp.Domain.Ranking;
 using PrayerApp.Domain.Rules;
 using PrayerApp.Shared.Contracts.Posts;
 using PrayerApp.Shared.Enums;
@@ -15,6 +17,8 @@ public static class PostEndpoints
     private const int DefaultPageSize = 20;
     private const int MaxPageSize = 50;
     private const int MyPostsLimit = 100;
+    private const int CandidateWindowDays = 30;
+    private const int MaxCandidates = 500;
 
     public static IEndpointRouteBuilder MapPostEndpoints(this IEndpointRouteBuilder app)
     {
@@ -30,8 +34,8 @@ public static class PostEndpoints
     }
 
     /// <summary>
-    /// Newest-first feed with keyset pagination. Phase 4 replaces the ordering with
-    /// the ranking score; the membership check and paging shape stay.
+    /// Ranked feed (see FeedRanker). Candidates are fetched by recency from the feed
+    /// index, scored in memory, and the top page selected with a bounded heap.
     /// </summary>
     private static async Task<Results<Ok<FeedPage>, NotFound, ForbidHttpResult, ValidationProblem>> Feed(
         int communityId,
@@ -39,6 +43,8 @@ public static class PostEndpoints
         int? limit,
         AppDbContext db,
         ClaimsPrincipal principal,
+        TimeProvider time,
+        IOptions<RankingOptions> ranking,
         CancellationToken ct)
     {
         var me = principal.GetUserId();
@@ -58,11 +64,10 @@ public static class PostEndpoints
             return TypedResults.Forbid();
         }
 
-        var query = db.Posts.Where(p => p.CommunityId == communityId && p.Status == PostStatus.Active);
-
+        FeedCursor? previous = null;
         if (cursor is not null)
         {
-            if (!FeedCursor.TryDecode(cursor, out var after))
+            if (!FeedCursor.TryDecode(cursor, out var decoded))
             {
                 return TypedResults.ValidationProblem(new Dictionary<string, string[]>
                 {
@@ -70,30 +75,48 @@ public static class PostEndpoints
                 });
             }
 
-            // "Strictly after the last item" in (CreatedAt DESC, Id DESC) order. Unlike
-            // OFFSET paging, this stays correct when new posts arrive between page loads,
-            // and it's an index seek instead of skipping N rows.
-            query = query.Where(p => p.CreatedAt < after.CreatedAt
-                || (p.CreatedAt == after.CreatedAt && p.Id < after.Id));
+            previous = decoded;
         }
+
+        // Every page of one scroll session is ranked as of the same instant.
+        var asOf = previous?.AsOf ?? time.GetUtcNow();
+        var velocityWindowStart = asOf.AddHours(-24);
+        var oldestCandidate = asOf.AddDays(-CandidateWindowDays);
+
+        // One query: the newest active posts as of asOf, each with its count of
+        // acknowledgments in the 24 hours before asOf (a range seek on the
+        // (PostId, CreatedAt) index per post). Older posts have decayed to near-zero
+        // scores, so capping the candidate set loses nothing a reader would reach.
+        var candidates = await db.Posts
+            .Where(p => p.CommunityId == communityId
+                && p.Status == PostStatus.Active
+                && p.CreatedAt <= asOf
+                && p.CreatedAt >= oldestCandidate)
+            .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id)
+            .Take(MaxCandidates)
+            .Select(p => new RankingInput(
+                p.Id,
+                p.CreatedAt,
+                p.Acknowledgments.Count(a => a.CreatedAt > velocityWindowStart && a.CreatedAt <= asOf),
+                p.IsUrgent))
+            .ToListAsync(ct);
 
         var pageSize = Math.Clamp(limit ?? DefaultPageSize, 1, MaxPageSize);
 
-        // Fetch one extra row: if it exists there's a next page, and we didn't need a COUNT(*).
-        var posts = await query
-            .OrderByDescending(p => p.CreatedAt)
-            .ThenByDescending(p => p.Id)
-            .Take(pageSize + 1)
-            .ToDto(me)
-            .ToListAsync(ct);
+        // Ask for one extra: if it exists there's another page.
+        var ranked = FeedRanker.TopK(candidates, asOf, pageSize + 1, ranking.Value, previous?.Last);
+        var page = ranked.Take(pageSize).ToList();
 
-        string? nextCursor = null;
-        if (posts.Count > pageSize)
-        {
-            posts.RemoveAt(pageSize);
-            var last = posts[^1];
-            nextCursor = new FeedCursor(last.CreatedAt, last.Id).Encode();
-        }
+        var pageIds = page.Select(r => r.PostId).ToList();
+        var dtos = await db.Posts
+            .Where(p => pageIds.Contains(p.Id))
+            .ToDto(me)
+            .ToDictionaryAsync(p => p.Id, ct);
+
+        // SQL returns rows in no particular order; restore rank order.
+        var posts = page.Select(r => dtos[r.PostId]).ToList();
+        var nextCursor = ranked.Count > pageSize ? new FeedCursor(asOf, page[^1]).Encode() : null;
 
         return TypedResults.Ok(new FeedPage(posts, nextCursor));
     }

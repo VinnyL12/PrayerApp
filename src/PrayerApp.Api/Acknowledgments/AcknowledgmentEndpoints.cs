@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using PrayerApp.Api.Common;
 using PrayerApp.Api.Data;
+using PrayerApp.Api.Notifications;
 using PrayerApp.Api.Posts;
 using PrayerApp.Domain.Entities;
 using PrayerApp.Domain.Rules;
@@ -29,6 +30,7 @@ public static class AcknowledgmentEndpoints
         AppDbContext db,
         ClaimsPrincipal principal,
         TimeProvider time,
+        NotificationQueue notifications,
         CancellationToken ct)
     {
         var me = principal.GetUserId();
@@ -66,12 +68,13 @@ public static class AcknowledgmentEndpoints
         // Post.AcknowledgmentCount always equals the number of Acknowledgment rows.
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
 
+        var now = time.GetUtcNow();
         db.Acknowledgments.Add(new Acknowledgment
         {
             PostId = postId,
             UserId = me,
             Type = request.Type,
-            CreatedAt = time.GetUtcNow(),
+            CreatedAt = now,
         });
 
         try
@@ -93,6 +96,12 @@ public static class AcknowledgmentEndpoints
             .ExecuteUpdateAsync(s => s.SetProperty(p => p.AcknowledgmentCount, p => p.AcknowledgmentCount + 1), ct);
 
         await transaction.CommitAsync(ct);
+
+        // Only after commit: enqueueing earlier could notify the author about an
+        // acknowledgment that then rolled back. Non-blocking; the author's notification
+        // row is written moments later by NotificationProcessor.
+        notifications.TryEnqueue(new NotificationEvent(
+            NotificationType.PostAcknowledged, post.AuthorId, me, postId, now));
 
         var count = await db.Posts.Where(p => p.Id == postId).Select(p => p.AcknowledgmentCount).SingleAsync(ct);
         return TypedResults.Ok(new AcknowledgmentResult(postId, request.Type, count));
