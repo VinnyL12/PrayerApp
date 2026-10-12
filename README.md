@@ -19,11 +19,12 @@ Prerequisites: [.NET 10 SDK](https://dotnet.microsoft.com/download) and
    docker compose up -d
    ```
 
-2. **Give the API its connection string** (stored outside the repo via user secrets)
+2. **Give the API its secrets** (stored outside the repo via user secrets)
    ```bash
    dotnet user-secrets set "ConnectionStrings:Default" \
      "Server=localhost,1433;Database=PrayerApp;User Id=sa;Password=<SA_PASSWORD>;TrustServerCertificate=True;Encrypt=True" \
      --project src/PrayerApp.Api
+   dotnet user-secrets set "Jwt:SigningKey" "$(openssl rand -base64 64)" --project src/PrayerApp.Api
    ```
 
 3. **Create the database**
