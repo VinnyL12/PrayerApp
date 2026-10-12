@@ -6,7 +6,7 @@
 
 <section class="auth-card card">
     <h1>Welcome back</h1>
-    <p class="muted">Sign in to see your communities.</p>
+    <p class="lede">Sign in to see your communities.</p>
 
     <EditForm Model="_request" OnValidSubmit="SubmitAsync">
         <DataAnnotationsValidator />
@@ -21,13 +21,13 @@
 
         @if (_error is not null)
         {
-            <p class="error" role="alert">@_error</p>
+            <p class="alert" role="alert">@_error</p>
         }
 
         <button type="submit" class="button button-block" disabled="@_busy">@(_busy ? "Signing in…" : "Sign in")</button>
     </EditForm>
 
-    <p class="muted small center">New here? <a href="/register">Create an account</a></p>
+    <p class="auth-footer">New here? <a href="/register">Create an account</a></p>
 </section>
 
 @code {

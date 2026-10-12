@@ -4,24 +4,34 @@
 
 <header class="topbar">
     <div class="topbar-inner">
-        <a class="brand" href="/">Prayer App</a>
+        <a class="brand" href="/">
+            <span class="brand-mark" aria-hidden="true">
+                @* A simple flame: a candle lit for someone. *@
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2c.6 3.2 4.5 5.6 4.5 10.1A4.5 4.5 0 0 1 12 16.6a4.5 4.5 0 0 1-4.5-4.5c0-2.2 1.2-3.6 2.3-4.9.3 1.5 1 2.4 2 2.9C11.2 7.6 11.3 4.6 12 2Z" />
+                    <rect x="10.75" y="17.5" width="2.5" height="4.5" rx="1.25" />
+                </svg>
+            </span>
+            Prayer App
+        </a>
 
         <AuthorizeView>
             <Authorized>
-                <nav class="nav">
+                <nav class="nav" aria-label="Main">
                     <NavLink href="/communities">Communities</NavLink>
                     <NavLink href="/me/posts">My posts</NavLink>
                     <NotificationBell />
                 </nav>
                 <div class="account">
-                    <span class="muted">@context.User.Identity?.Name</span>
-                    <button class="link-button" @onclick="LogoutAsync">Sign out</button>
+                    <span class="avatar" aria-hidden="true">@Initials(context.User.Identity?.Name)</span>
+                    <span class="account-name">@context.User.Identity?.Name</span>
+                    <button class="button button-quiet button-small" @onclick="LogoutAsync">Sign out</button>
                 </div>
             </Authorized>
             <NotAuthorized>
                 <nav class="nav">
                     <NavLink href="/login">Sign in</NavLink>
-                    <NavLink href="/register" class="button button-small">Join</NavLink>
+                    <NavLink href="/register" class="button button-small">Create account</NavLink>
                 </nav>
             </NotAuthorized>
         </AuthorizeView>
@@ -38,4 +48,11 @@
         await Auth.LogoutAsync();
         Navigation.NavigateTo("/login");
     }
+
+    // "Grace Hopper" -> "GH", "grace" -> "G".
+    private static string Initials(string? name) =>
+        string.Concat((name ?? "?")
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Take(2)
+            .Select(part => char.ToUpperInvariant(part[0])));
 }

@@ -6,14 +6,14 @@
 
 <section class="auth-card card">
     <h1>Join Prayer App</h1>
-    <p class="muted">A quiet place to ask for and offer support. Every faith is welcome.</p>
+    <p class="lede">A quiet place to ask for and offer support. Every faith is welcome.</p>
 
     <EditForm Model="_request" OnValidSubmit="SubmitAsync">
         <DataAnnotationsValidator />
 
         <label for="name">Display name</label>
         <InputText id="name" class="input" autocomplete="nickname" @bind-Value="_request.DisplayName" />
-        <p class="muted small">Shown on your posts unless you post anonymously.</p>
+        <p class="hint">Shown on your posts unless you post anonymously.</p>
         <ValidationMessage For="() => _request.DisplayName" class="error small" />
 
         <label for="email">Email</label>
@@ -22,18 +22,18 @@
 
         <label for="password">Password</label>
         <InputText id="password" class="input" type="password" autocomplete="new-password" @bind-Value="_request.Password" />
-        <p class="muted small">At least 8 characters, with a number and upper- and lowercase letters.</p>
+        <p class="hint">At least 8 characters, with a number and upper- and lowercase letters.</p>
         <ValidationMessage For="() => _request.Password" class="error small" />
 
         @if (_error is not null)
         {
-            <p class="error" role="alert">@_error</p>
+            <p class="alert" role="alert">@_error</p>
         }
 
         <button type="submit" class="button button-block" disabled="@_busy">@(_busy ? "Creating account…" : "Create account")</button>
     </EditForm>
 
-    <p class="muted small center">Already have an account? <a href="/login">Sign in</a></p>
+    <p class="auth-footer">Already have an account? <a href="/login">Sign in</a></p>
 </section>
 
 @code {

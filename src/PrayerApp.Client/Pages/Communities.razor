@@ -4,8 +4,10 @@
 
 <PageTitle>Communities · Prayer App</PageTitle>
 
-<h1>Communities</h1>
-<p class="muted">Join the ones that fit. You'll see posts from communities you belong to.</p>
+<header class="page-header">
+    <h1>Communities</h1>
+    <p>Join the ones that fit. You'll see posts from communities you belong to.</p>
+</header>
 
 @if (_error is not null)
 {
@@ -25,7 +27,7 @@ else
                 <a href="/communities/@community.Id"><h2>@community.Name</h2></a>
                 <p class="muted">@community.Description</p>
                 <div class="row">
-                    <span class="muted small">@community.MemberCount @(community.MemberCount == 1 ? "member" : "members")</span>
+                    <span class="member-count">@community.MemberCount @(community.MemberCount == 1 ? "member" : "members")</span>
                     @if (community.IsMember)
                     {
                         <button class="button button-quiet button-small" disabled="@(_busyId == community.Id)"

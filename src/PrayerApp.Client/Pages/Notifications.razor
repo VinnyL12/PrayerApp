@@ -7,7 +7,7 @@
 
 <PageTitle>Notifications · Prayer App</PageTitle>
 
-<header class="row">
+<header class="row page-header">
     <h1>Notifications</h1>
     @if (_list is { UnreadCount: > 0 })
     {
@@ -36,7 +36,7 @@ else
             <li @key="n.Id">
                 <button class="card notification @(n.IsRead ? "" : "unread")" @onclick="() => OpenAsync(n)">
                     <span>Someone responded to “@n.PostExcerpt”</span>
-                    <span class="muted small">@TimeFormat.Ago(n.CreatedAt, Time.GetUtcNow())</span>
+                    <span class="muted small time">@TimeFormat.Ago(n.CreatedAt, Time.GetUtcNow())</span>
                 </button>
             </li>
         }

@@ -5,7 +5,10 @@
 
 <AuthorizeView>
     <Authorized>
-        <h1>Your communities</h1>
+        <header class="page-header">
+            <h1>Your communities</h1>
+            <p>Pick up where you left off.</p>
+        </header>
 
         @if (_communities is null)
         {
@@ -26,6 +29,9 @@
                     <a class="card community-card" href="/communities/@community.Id">
                         <h2>@community.Name</h2>
                         <p class="muted">@community.Description</p>
+                        <div class="row">
+                            <span class="member-count">@community.MemberCount @(community.MemberCount == 1 ? "member" : "members")</span>
+                        </div>
                     </a>
                 }
             </div>
@@ -34,15 +40,39 @@
     </Authorized>
     <NotAuthorized>
         <section class="hero">
+            <span class="eyebrow">Open to every faith</span>
             <h1>Ask for support. Offer it back.</h1>
             <p class="lead">
                 Prayer App is a small, private place to share what you're carrying and let others
-                know you're not alone. Open to every faith, and kind by design: people respond
-                with a few gentle words, never comments.
+                know you're not alone.
             </p>
             <div class="hero-actions">
                 <a class="button" href="/register">Create an account</a>
                 <a class="button button-quiet" href="/login">Sign in</a>
+            </div>
+        </section>
+
+        <section class="features" aria-label="How it works">
+            <div class="card feature">
+                <div class="feature-icon" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5" /><circle cx="17" cy="9" r="2.5" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 14.3c.6-.2 1.3-.3 2-.3 2.8 0 5 2.2 5 5" /></svg>
+                </div>
+                <h2>Join communities</h2>
+                <p>Grief, health, family, work and more. You only see posts from the communities you join.</p>
+            </div>
+            <div class="card feature">
+                <div class="feature-icon" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8Z" /></svg>
+                </div>
+                <h2>Kind by design</h2>
+                <p>People respond with a few gentle words like "Praying for you". There are no comments, so there's no room for negativity.</p>
+            </div>
+            <div class="card feature">
+                <div class="feature-icon" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+                </div>
+                <h2>Private when you need it</h2>
+                <p>Post anonymously any time. You'll see how many people responded, but never who.</p>
             </div>
         </section>
     </NotAuthorized>
