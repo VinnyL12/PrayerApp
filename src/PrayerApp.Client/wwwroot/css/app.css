@@ -454,26 +454,144 @@ a.post-link:hover {
 .tag-urgent { background: var(--urgent-soft); color: var(--urgent); }
 .tag-answered { background: var(--answered-soft); color: var(--answered); }
 
-.post-actions {
+/* ---- My posts ---------------------------------------------------------------- */
+
+.tabs {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border-radius: 999px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+}
+
+.tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.95rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-soft);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.tab:hover {
+    color: var(--text);
+}
+
+.tab.active {
+    background: var(--surface);
+    color: var(--primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.tab-count {
+    min-width: 1.3rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: var(--border);
+    color: var(--text-soft);
+    font-size: 0.75rem;
+    text-align: center;
+}
+
+.tab.active .tab-count {
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+
+.tab-hint {
+    margin: 0.75rem 0 1rem;
+}
+
+.my-posts {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.my-post {
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+}
+
+.my-post-meta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem 0.75rem;
-    margin-top: 0.85rem;
-    padding-top: 0.85rem;
-    border-top: 1px dashed var(--border);
+    gap: 0.4rem;
+    font-size: 0.85rem;
 }
 
-.post-actions .link-button {
-    margin-left: auto;
+.my-post-community {
+    color: var(--primary);
+    font-weight: 650;
+}
+
+.my-post-body {
+    display: -webkit-box;
+    margin: 0.45rem 0 0.85rem;
+    color: var(--text);
+    text-decoration: none;
+    line-height: 1.6;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.my-post-body:hover {
+    color: var(--text);
+}
+
+.my-post-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+
+.response-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-soft);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.response-link svg {
+    color: var(--primary);
+}
+
+.response-link:hover {
+    color: var(--primary);
+}
+
+.my-post-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.link-button.quiet {
+    color: var(--muted);
     font-size: 0.88rem;
+    text-decoration: none;
 }
 
-.post-actions-panel {
-    margin-top: 0.85rem;
-    padding: 1rem 1.1rem 0.4rem;
-    border-radius: var(--radius-sm);
-    background: var(--surface-sunken);
+.link-button.quiet:hover {
+    color: var(--text);
+    text-decoration: underline;
 }
 
 /* ---- Composer ---------------------------------------------------------------- */

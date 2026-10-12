@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @inject PrayerApiClient Api
 @inject IJSRuntime JS
+@inject TimeProvider Time
 
 <PageTitle>My posts · Prayer App</PageTitle>
 
@@ -9,12 +10,12 @@
 
 <header class="page-header">
     <h1>My posts</h1>
-    <p>Mark a request answered when it's resolved, or archive it to remove it from feeds.</p>
+    <p>See how people responded, and close a request once it's resolved.</p>
 </header>
 
 @if (_error is not null)
 {
-    <p class="error">@_error</p>
+    <p class="alert" role="alert">@_error</p>
 }
 
 @if (_posts is null)
@@ -30,41 +31,85 @@ else if (_posts.Count == 0)
 }
 else
 {
-    @foreach (var post in _posts)
+    <div class="tabs" role="tablist" aria-label="Filter posts by status">
+        @foreach (var status in Tabs)
+        {
+            <button role="tab" class="tab @(status == _tab ? "active" : "")" aria-selected="@(status == _tab)"
+                    @onclick="() => _tab = status">
+                @TabLabel(status)
+                <span class="tab-count">@_posts.Count(p => p.Status == status)</span>
+            </button>
+        }
+    </div>
+
+    <p class="tab-hint muted small">@TabHint(_tab)</p>
+
+    @if (Visible.Count == 0)
     {
-        <PostCard @key="post.Id" Post="post">
-            <Actions>
-                <div class="post-actions">
-                    @if (post.Status == PostStatus.Active)
-                    {
-                        <button class="button button-small" @onclick="() => SetStatusAsync(post, PostStatus.Answered)">Mark answered</button>
-                    }
-                    @if (post.Status != PostStatus.Archived)
-                    {
-                        <button class="button button-quiet button-small" @onclick="() => SetStatusAsync(post, PostStatus.Archived)">Archive</button>
-                    }
-                    <button class="link-button" @onclick="() => ToggleBreakdown(post.Id)">
-                        @(_expanded.Contains(post.Id) ? "Hide responses" : "See responses")
-                    </button>
-                </div>
-                @if (_expanded.Contains(post.Id))
-                {
-                    <div class="post-actions-panel">
-                        <AcknowledgmentBreakdown PostId="post.Id" />
+        <div class="card empty">
+            <p>@EmptyMessage(_tab)</p>
+        </div>
+    }
+    else
+    {
+        <ul class="my-posts">
+            @foreach (var post in Visible)
+            {
+                <li @key="post.Id" class="card my-post">
+                    <div class="my-post-meta">
+                        <span class="my-post-community">@post.CommunityName</span>
+                        <span class="muted">· @TimeFormat.Ago(post.CreatedAt, Time.GetUtcNow())</span>
+                        @if (post.IsUrgent)
+                        {
+                            <span class="tag tag-urgent">Urgent</span>
+                        }
+                        @if (post.IsAnonymous)
+                        {
+                            <span class="tag">Anonymous</span>
+                        }
                     </div>
-                }
-            </Actions>
-        </PostCard>
+
+                    <a class="my-post-body" href="/posts/@post.Id">@post.Body</a>
+
+                    <div class="my-post-footer">
+                        <a class="response-link" href="/posts/@post.Id">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8Z" /></svg>
+                            @ResponseLabel(post.AcknowledgmentCount)
+                        </a>
+
+                        @* One clear next step per state. *@
+                        @switch (post.Status)
+                        {
+                            case PostStatus.Active:
+                                <div class="my-post-actions">
+                                    <button class="link-button quiet" disabled="@(_busyId == post.Id)" @onclick="() => SetStatusAsync(post, PostStatus.Archived)">Archive</button>
+                                    <button class="button button-small" disabled="@(_busyId == post.Id)" @onclick="() => SetStatusAsync(post, PostStatus.Answered)">Mark answered</button>
+                                </div>
+                                break;
+                            case PostStatus.Answered:
+                                <button class="button button-quiet button-small" disabled="@(_busyId == post.Id)" @onclick="() => SetStatusAsync(post, PostStatus.Archived)">Archive</button>
+                                break;
+                            default:
+                                <span class="muted small">Hidden from feeds</span>
+                                break;
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
     }
 }
 </div>
 
 @code {
+    private static readonly PostStatus[] Tabs = [PostStatus.Active, PostStatus.Answered, PostStatus.Archived];
+
     private List<PostDto>? _posts;
+    private PostStatus _tab = PostStatus.Active;
+    private int? _busyId;
     private string? _error;
 
-    // A HashSet gives O(1) "is this one expanded?" checks while rendering the list.
-    private readonly HashSet<int> _expanded = [];
+    private List<PostDto> Visible => _posts?.Where(p => p.Status == _tab).ToList() ?? [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -73,31 +118,56 @@ else
         _error = result.Error;
     }
 
-    private void ToggleBreakdown(int postId)
+    private static string TabLabel(PostStatus status) => status switch
     {
-        if (!_expanded.Remove(postId))
-        {
-            _expanded.Add(postId);
-        }
-    }
+        PostStatus.Active => "Active",
+        PostStatus.Answered => "Answered",
+        _ => "Archived",
+    };
+
+    private static string TabHint(PostStatus status) => status switch
+    {
+        PostStatus.Active => "Open requests people can still respond to.",
+        PostStatus.Answered => "Resolved requests. People can still celebrate with you.",
+        _ => "Closed requests, hidden from community feeds. Only you can see them.",
+    };
+
+    private static string EmptyMessage(PostStatus status) => status switch
+    {
+        PostStatus.Active => "No open requests right now.",
+        PostStatus.Answered => "Nothing marked answered yet.",
+        _ => "Nothing archived.",
+    };
+
+    private static string ResponseLabel(int count) => count switch
+    {
+        0 => "No responses yet",
+        1 => "1 response",
+        _ => $"{count} responses",
+    };
 
     private async Task SetStatusAsync(PostDto post, PostStatus status)
     {
         if (status == PostStatus.Archived
-            && !await JS.InvokeAsync<bool>("confirm", "Archive this post? It will leave community feeds and can't be reopened."))
+            && !await JS.InvokeAsync<bool>("confirm", "Archive this post? It will be hidden from the community and can't be reopened."))
         {
             return;
         }
 
+        _busyId = post.Id;
         _error = null;
+
         var result = await Api.UpdateStatusAsync(post.Id, status);
         if (result.Succeeded)
         {
+            // Replace in place; the post moves to its new tab on the next render.
             _posts![_posts.IndexOf(post)] = result.Value!;
         }
         else
         {
             _error = result.Error;
         }
+
+        _busyId = null;
     }
 }

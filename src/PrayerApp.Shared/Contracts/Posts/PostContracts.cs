@@ -26,6 +26,7 @@ public sealed record PostDto(
     int Id,
     int CommunityId,
     CommunityCategory CommunityCategory,
+    string CommunityName,
     string Body,
     PostStatus Status,
     bool IsUrgent,

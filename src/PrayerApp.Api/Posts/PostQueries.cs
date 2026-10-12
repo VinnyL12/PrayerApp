@@ -24,6 +24,7 @@ public static class PostQueries
             p.Id,
             p.CommunityId,
             p.Community.Category,
+            p.Community.Name,
             p.Body,
             p.Status,
             p.IsUrgent,
