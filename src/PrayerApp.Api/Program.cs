@@ -113,7 +113,9 @@ if (app.Environment.IsDevelopment())
     if (app.Configuration.GetValue<bool>("Demo:SeedOnStartup"))
     {
         await DemoDataSeeder.SeedAsync(app.Services,
-            app.Configuration["Demo:Password"] ?? throw new InvalidOperationException("Demo:Password is not set."));
+            app.Configuration["Demo:Password"] ?? throw new InvalidOperationException("Demo:Password is not set."),
+            // Your own registered accounts, from user secrets so real emails stay out of the repo.
+            app.Configuration.GetSection("Demo:PersonalAccounts").Get<string[]>());
     }
 }
 
