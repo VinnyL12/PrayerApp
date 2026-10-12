@@ -11,7 +11,7 @@ requests, and others respond with a small set of preset acknowledgments.
 - Rotating refresh tokens in an httpOnly cookie, with reuse (theft) detection
 - Race-safe counters and one-response-per-user enforced by the database, proven by concurrency tests
 - Asynchronous notification pipeline on `Channel<T>` and a hosted `BackgroundService`
-- 63 tests, including integration tests against a real SQL Server via Testcontainers
+- 71 tests, including integration tests against a real SQL Server via Testcontainers
 
 ## Running locally
 
