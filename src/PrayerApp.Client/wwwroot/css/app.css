@@ -159,7 +159,7 @@ h1:focus {
 }
 
 .topbar-inner {
-    max-width: 880px;
+    max-width: 1040px;
     margin: 0 auto;
     padding: 0.7rem 1.25rem;
     display: flex;
@@ -268,9 +268,16 @@ h1:focus {
 /* ---- Layout ------------------------------------------------------------------ */
 
 .page {
-    max-width: 880px;
+    max-width: 1040px;
     margin: 0 auto;
-    padding: 2.25rem 1.25rem 5rem;
+    padding: 1.75rem 1.25rem 3rem;
+}
+
+/* Long-form content (posts, notifications) keeps a comfortable line length even
+   though the page itself is wide enough for three community tiles. */
+.readable {
+    max-width: 760px;
+    margin: 0 auto;
 }
 
 .page-header {
@@ -643,9 +650,9 @@ a.post-link:hover {
     flex-wrap: wrap;
     align-items: flex-end;
     justify-content: space-between;
-    gap: 2rem;
-    margin-bottom: 2.75rem;
-    padding: 2.5rem 2.5rem 2.25rem;
+    gap: 1.25rem 2rem;
+    margin-bottom: 1.75rem;
+    padding: 1.6rem 2rem;
     border-radius: var(--radius-lg);
     background:
         radial-gradient(circle at 85% 15%, rgba(255, 255, 255, 0.16) 0, transparent 45%),
@@ -656,9 +663,9 @@ a.post-link:hover {
 }
 
 .welcome h1 {
-    margin: 0.1rem 0 0.4rem;
+    margin: 0 0 0.2rem;
     color: #fff;
-    font-size: clamp(2.2rem, 5vw, 3rem);
+    font-size: clamp(1.9rem, 4vw, 2.4rem);
 }
 
 .welcome p {
@@ -680,8 +687,8 @@ a.post-link:hover {
 }
 
 .welcome-stats div {
-    min-width: 7.5rem;
-    padding: 0.9rem 1.1rem;
+    min-width: 7rem;
+    padding: 0.65rem 1rem;
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: var(--radius);
     background: rgba(255, 255, 255, 0.1);
@@ -697,9 +704,9 @@ a.post-link:hover {
 }
 
 .welcome-stats dd {
-    margin: 0.15rem 0 0;
+    margin: 0.1rem 0 0;
     font-family: var(--font-display);
-    font-size: 2rem;
+    font-size: 1.65rem;
     font-weight: 600;
     line-height: 1.1;
     font-variant-numeric: tabular-nums;
@@ -710,13 +717,13 @@ a.post-link:hover {
     align-items: flex-end;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.9rem;
 }
 
 .section-header h2 {
     margin: 0;
     font-family: var(--font-display);
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     font-weight: 600;
 }
 
@@ -731,8 +738,7 @@ a.post-link:hover {
 .page-hero {
     position: relative;
     max-width: 40rem;
-    margin: 0 auto 2.5rem;
-    padding: 1.5rem 0 0;
+    margin: 0 auto 1.6rem;
     text-align: center;
 }
 
@@ -746,14 +752,18 @@ a.post-link:hover {
 }
 
 .page-hero h1 {
-    font-size: clamp(2.2rem, 5vw, 2.9rem);
-    margin-bottom: 0.6rem;
+    font-size: clamp(1.9rem, 4vw, 2.4rem);
+    margin-bottom: 0.35rem;
+}
+
+.page-hero .eyebrow {
+    margin-bottom: 0.7rem;
 }
 
 .page-hero p {
     margin: 0;
     color: var(--text-soft);
-    font-size: 1.05rem;
+    font-size: 0.98rem;
 }
 
 /* ---- Community tiles --------------------------------------------------------- */
@@ -761,7 +771,7 @@ a.post-link:hover {
 /* Flexbox (not grid) so a short last row is centered: 7 tiles lay out 3 + 3 + 1,
    with the last one in the middle instead of stranded on the left. */
 .tile-grid {
-    --tile-gap: 1.25rem;
+    --tile-gap: 1rem;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
@@ -770,90 +780,103 @@ a.post-link:hover {
 
 .community-tile {
     flex: 0 0 calc((100% - 2 * var(--tile-gap)) / 3);
-    display: flex;
-    flex-direction: column;
     position: relative;
-    overflow: hidden;
+    display: flex;
+    align-items: center;
+    min-width: 0;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-sm);
     transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
 }
 
-.community-tile::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto;
-    height: 4px;
-    background: var(--primary);
-    opacity: 0;
-    transition: opacity 0.18s;
+/* Browsing layout: two wider columns so descriptions read in full next to Join/Leave. */
+.tile-grid-2 {
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+.tile-grid-2 .community-tile {
+    flex-basis: calc((100% - var(--tile-gap)) / 2);
 }
 
 .community-tile:hover {
-    transform: translateY(-3px);
+    transform: translateY(-2px);
     border-color: var(--border-strong);
     box-shadow: var(--shadow-lg);
 }
 
-.community-tile:hover::before,
-.community-tile.is-member::before {
-    opacity: 1;
+.community-tile.is-member {
+    border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
 }
 
-.community-tile-link {
+.tile-main {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    padding: 1.5rem 1.5rem 1rem;
-    color: inherit;
-    text-decoration: none;
-}
-
-.community-tile-link:hover {
-    color: inherit;
-}
-
-.community-tile h2 {
-    margin: 0.6rem 0 0;
-    font-size: 1.12rem;
-}
-
-/* Exactly two lines of description, so every tile has the same shape. */
-.community-tile p {
-    margin: 0;
-    min-height: calc(2 * 1.55em);
-    color: var(--muted);
-    font-size: 0.92rem;
-    line-height: 1.55;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.community-tile-footer {
+    min-width: 0;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    min-height: 3.6rem;
-    padding: 0.75rem 1.5rem;
-    border-top: 1px solid var(--border);
-    background: var(--surface-sunken);
+    gap: 1rem;
+    padding: 1.1rem 0.25rem 1.1rem 1.15rem;
+    color: inherit;
+    text-decoration: none;
 }
 
-.tile-open {
-    font-size: 0.88rem;
-    font-weight: 600;
-    text-decoration: none;
+.tile-main:hover {
+    color: inherit;
+}
+
+.tile-text {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+}
+
+/* Names wrap (never truncate); flex rows stretch so tiles in a row stay equal height. */
+.tile-name {
+    font-weight: 650;
+    font-size: 1rem;
+    line-height: 1.3;
+}
+
+.tile-description {
+    color: var(--muted);
+    font-size: 0.83rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tile-text .member-count {
+    margin-top: 0.2rem;
+    font-size: 0.78rem;
+}
+
+.tile-action {
+    flex: none;
+    padding-right: 0.9rem;
+}
+
+.tile-chevron {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    color: var(--muted);
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.community-tile:hover .tile-chevron {
+    background: var(--primary-soft);
+    color: var(--primary);
 }
 
 .community-icon {
-    width: 46px;
-    height: 46px;
+    width: 48px;
+    height: 48px;
     flex: none;
     display: grid;
     place-items: center;
@@ -863,8 +886,8 @@ a.post-link:hover {
 }
 
 .community-icon-lg {
-    width: 60px;
-    height: 60px;
+    width: 56px;
+    height: 56px;
     border-radius: 16px;
 }
 
@@ -877,7 +900,7 @@ a.post-link:hover {
 
 label {
     display: block;
-    margin: 1rem 0 0.35rem;
+    margin: 0.85rem 0 0.3rem;
     color: var(--text);
     font-size: 0.88rem;
     font-weight: 600;
@@ -1058,8 +1081,8 @@ input[type="checkbox"] {
 
 .auth-card {
     max-width: 440px;
-    margin: 1.5rem auto;
-    padding: 2.25rem 2rem;
+    margin: 0 auto;
+    padding: 1.75rem 2rem;
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
 }
@@ -1074,8 +1097,8 @@ input[type="checkbox"] {
 }
 
 .auth-footer {
-    margin: 1.5rem 0 0;
-    padding-top: 1.25rem;
+    margin: 1.25rem 0 0;
+    padding-top: 1rem;
     border-top: 1px solid var(--border);
     text-align: center;
     color: var(--muted);
@@ -1086,7 +1109,7 @@ input[type="checkbox"] {
 
 .hero {
     position: relative;
-    padding: 4rem 0 3rem;
+    padding: 2.5rem 0 2.25rem;
     text-align: center;
 }
 
@@ -1131,7 +1154,7 @@ input[type="checkbox"] {
     flex-wrap: wrap;
     justify-content: center;
     gap: 0.75rem;
-    margin-top: 2rem;
+    margin-top: 1.6rem;
 }
 
 .hero-actions .button {
@@ -1173,12 +1196,12 @@ input[type="checkbox"] {
 
 /* ---- Small screens ----------------------------------------------------------- */
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
     .community-tile { flex-basis: calc((100% - var(--tile-gap)) / 2); }
 }
 
 @media (max-width: 640px) {
-    .community-tile { flex-basis: 100%; }
+    .community-tile, .tile-grid-2 .community-tile { flex-basis: 100%; }
     .welcome { padding: 1.75rem 1.5rem; gap: 1.5rem; }
     .welcome-stats { width: 100%; }
     .welcome-stats div { flex: 1; min-width: 0; padding: 0.75rem; }

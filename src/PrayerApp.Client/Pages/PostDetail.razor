@@ -4,6 +4,8 @@
 
 <PageTitle>Post · Prayer App</PageTitle>
 
+<div class="readable">
+
 @if (_post is null)
 {
     <p class="@(_error is null ? "muted" : "error")">@(_error ?? "Loading…")</p>
@@ -22,6 +24,7 @@ else
         </section>
     }
 }
+</div>
 
 @code {
     [Parameter] public int Id { get; set; }

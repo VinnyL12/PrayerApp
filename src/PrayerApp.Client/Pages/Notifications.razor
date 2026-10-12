@@ -7,6 +7,8 @@
 
 <PageTitle>Notifications · Prayer App</PageTitle>
 
+<div class="readable">
+
 <header class="row page-header">
     <h1>Notifications</h1>
     @if (_list is { UnreadCount: > 0 })
@@ -47,6 +49,7 @@ else
         }
     </ul>
 }
+</div>
 
 @code {
     /// <summary>All notifications about one post, collapsed into a single row.</summary>

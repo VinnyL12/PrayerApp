@@ -1,15 +1,16 @@
-@* A community card with a fixed structure (icon, name, two-line description, footer), so
-   every tile in a grid is the same height no matter how long its text is. *@
+@* A compact, horizontal community card: icon | name, one-line description, members | action.
+   Fixed height regardless of text length, so a grid of them stays even and fits on one screen. *@
 <article class="community-tile @(Community.IsMember ? "is-member" : "")">
-    <a class="community-tile-link" href="/communities/@Community.Id" aria-label="Open @Community.Name">
+    <a class="tile-main" href="/communities/@Community.Id" aria-label="Open @Community.Name">
         <CommunityIcon Category="Community.Category" />
-        <h2>@Community.Name</h2>
-        <p>@Community.Description</p>
+        <span class="tile-text">
+            <span class="tile-name">@Community.Name</span>
+            <span class="tile-description">@Community.Description</span>
+            <span class="member-count">@Community.MemberCount @(Community.MemberCount == 1 ? "member" : "members")</span>
+        </span>
     </a>
 
-    <footer class="community-tile-footer">
-        <span class="member-count">@Community.MemberCount @(Community.MemberCount == 1 ? "member" : "members")</span>
-
+    <div class="tile-action">
         @if (OnToggle.HasDelegate)
         {
             @if (Community.IsMember)
@@ -23,15 +24,17 @@
         }
         else
         {
-            <a class="tile-open" href="/communities/@Community.Id">Open →</a>
+            <a class="tile-chevron" href="/communities/@Community.Id" tabindex="-1" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6" /></svg>
+            </a>
         }
-    </footer>
+    </div>
 </article>
 
 @code {
     [Parameter, EditorRequired] public CommunityDto Community { get; set; } = default!;
 
-    /// <summary>When set, the footer shows Join/Leave; otherwise an "Open" link.</summary>
+    /// <summary>When set, the tile shows Join/Leave; otherwise a chevron into the community.</summary>
     [Parameter] public EventCallback<CommunityDto> OnToggle { get; set; }
 
     [Parameter] public bool Busy { get; set; }

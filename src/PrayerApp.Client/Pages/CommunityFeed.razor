@@ -4,6 +4,8 @@
 
 <PageTitle>@(_community?.Name ?? "Community") · Prayer App</PageTitle>
 
+<div class="readable">
+
 @if (_community is null)
 {
     <p class="@(_error is null ? "muted" : "error")">@(_error ?? "Loading…")</p>
@@ -58,6 +60,7 @@ else
         }
     }
 }
+</div>
 
 @code {
     // Route parameter, like useParams().id. Blazor parses it to int because of {Id:int}.

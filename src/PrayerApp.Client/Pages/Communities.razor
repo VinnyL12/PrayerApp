@@ -21,7 +21,7 @@
 }
 else
 {
-    <div class="tile-grid">
+    <div class="tile-grid tile-grid-2">
         @foreach (var community in _communities)
         {
             <CommunityTile @key="community.Id" Community="community" OnToggle="ToggleAsync" Busy="@(_busyId == community.Id)" />
