@@ -1,4 +1,6 @@
+@page "/profile/admin"
 @page "/admin"
+@layout ProfileLayout
 @attribute [Authorize(Roles = Roles.Admin)]
 @using System.Security.Claims
 @inject PrayerApiClient Api

@@ -1,0 +1,76 @@
+@page "/profile"
+@layout ProfileLayout
+@attribute [Authorize]
+@inject PrayerApiClient Api
+
+<PageTitle>Profile · Prayer App</PageTitle>
+
+@if (_profile is null)
+{
+    <p class="@(_error is null ? "muted" : "error")">@(_error ?? "Loading…")</p>
+}
+else
+{
+    <header class="profile-head">
+        <span class="avatar avatar-lg" aria-hidden="true">@Initials(_profile.DisplayName)</span>
+        <div>
+            <h1>@_profile.DisplayName</h1>
+            <p class="muted">@_profile.Email</p>
+            <p class="profile-role">
+                @if (_profile.IsOwner)
+                {
+                    <span class="tag tag-admin" title="Set in the app's configuration">Owner</span>
+                }
+                else if (_profile.IsAdmin)
+                {
+                    <span class="tag tag-admin">Admin</span>
+                }
+                else
+                {
+                    <span class="tag">Member</span>
+                }
+                <span class="muted small">Member since @_profile.MemberSince.ToLocalTime().ToString("MMMM yyyy")</span>
+            </p>
+        </div>
+    </header>
+
+    <dl class="profile-stats">
+        <div>
+            <dt>Posts</dt>
+            <dd>@_profile.Posts</dd>
+        </div>
+        <div>
+            <dt>Support given</dt>
+            <dd>@_profile.ResponsesGiven</dd>
+        </div>
+        <div>
+            <dt>Support received</dt>
+            <dd>@_profile.ResponsesReceived</dd>
+        </div>
+        <div>
+            <dt>Communities</dt>
+            <dd>@_profile.Communities</dd>
+        </div>
+    </dl>
+
+    <div class="profile-links">
+        <a class="button button-quiet button-small" href="/me/posts">My posts</a>
+        <a class="button button-quiet button-small" href="/communities">Communities</a>
+    </div>
+}
+
+@code {
+    private ProfileDto? _profile;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Api.GetProfileAsync();
+        _profile = result.Value;
+        _error = result.Error;
+    }
+
+    // "Grace Hopper" -> "GH", same as the header avatar.
+    private static string Initials(string name) =>
+        string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(part => char.ToUpperInvariant(part[0])));
+}

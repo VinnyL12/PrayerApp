@@ -3,7 +3,7 @@ using PrayerApp.Shared.Contracts.Moderation;
 namespace PrayerApp.Client.Services;
 
 /// <summary>
-/// How many reported posts await an admin's decision. The nav link polls it; the
+/// How many reported posts await an admin's decision. The avatar badge polls it; the
 /// moderation page refreshes it after each decision. Same shape as NotificationState.
 /// </summary>
 public sealed class ModerationState(PrayerApiClient api)

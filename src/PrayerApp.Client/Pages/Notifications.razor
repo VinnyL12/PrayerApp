@@ -29,7 +29,7 @@
 else if (_groups.Count == 0)
 {
     <div class="card empty">
-        <p>Nothing yet. When someone responds to your posts, you'll see it here.</p>
+        <p>Nothing yet. When someone responds to your posts, or a post you responded to gets an update, you'll see it here.</p>
     </div>
 }
 else
@@ -91,6 +91,13 @@ else
         if (group.Type == NotificationType.PostHidden)
         {
             return "An admin hid your post";
+        }
+
+        if (group.Type == NotificationType.PostUpdated)
+        {
+            var updates = group.UnreadCount > 0 ? group.UnreadCount : group.Count;
+            var isNew = group.UnreadCount > 0 ? "New update" : "Update";
+            return updates == 1 ? $"{isNew} on a post you responded to" : $"{updates} {isNew.ToLowerInvariant()}s on a post you responded to";
         }
 
         var count = group.UnreadCount > 0 ? group.UnreadCount : group.Count;

@@ -35,6 +35,11 @@
             </div>
         }
 
+        @if (_request.IsUrgent)
+        {
+            <p class="muted small composer-hint">Urgent posts get a gentle highlight and an early spot in the feed for the next 48 hours.</p>
+        }
+
         @if (_request.IsAnonymous && (_image is not null || !string.IsNullOrWhiteSpace(_request.Link)))
         {
             <p class="notice small">Photos and payment links can reveal who you are, even on an anonymous post.</p>

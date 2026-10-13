@@ -1,0 +1,56 @@
+@inherits LayoutComponentBase
+@layout MainLayout
+@implements IDisposable
+@inject ModerationState Moderation
+@inject AuthService Auth
+@inject NavigationManager Navigation
+
+@* A layout inside MainLayout (like a nested route layout in React Router): every profile
+   page gets the same side menu, and only the content on the right changes. *@
+<div class="profile-layout">
+    <nav class="profile-menu" aria-label="Profile">
+        <NavLink href="/profile" Match="NavLinkMatch.All">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+            Profile
+        </NavLink>
+        <AuthorizeView Roles="@Roles.Admin">
+            <span class="profile-menu-label">Admin tools</span>
+            <NavLink href="/profile/moderation">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4" /><path d="M4 4h12l-2 4 2 4H4" /></svg>
+                Moderation
+                @if (Moderation.Summary.OpenCount > 0)
+                {
+                    <span class="count-pill" aria-label="@($"{Moderation.Summary.OpenCount} waiting")">@Moderation.Summary.OpenCount</span>
+                }
+            </NavLink>
+            <NavLink href="/profile/admin">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3Z" /></svg>
+                Admin
+            </NavLink>
+        </AuthorizeView>
+
+        <button class="profile-signout" @onclick="SignOutAsync">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></svg>
+            Sign out
+        </button>
+    </nav>
+
+    <div class="profile-content">
+        @Body
+    </div>
+</div>
+
+@code {
+    // The avatar's badge polls the count; this menu just shows the same shared state.
+    protected override void OnInitialized() => Moderation.Changed += OnChanged;
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private async Task SignOutAsync()
+    {
+        await Auth.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+
+    public void Dispose() => Moderation.Changed -= OnChanged;
+}

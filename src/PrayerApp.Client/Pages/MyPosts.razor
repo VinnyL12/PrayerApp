@@ -59,10 +59,7 @@ else
                     <div class="my-post-meta">
                         <span class="my-post-community">@post.CommunityName</span>
                         <span class="muted">· @TimeFormat.Ago(post.CreatedAt, Time.GetUtcNow())</span>
-                        @if (post.IsUrgent)
-                        {
-                            <span class="tag tag-urgent">Urgent</span>
-                        }
+                        <UrgentBadge Post="post" />
                         @if (post.IsAnonymous)
                         {
                             <span class="tag">Anonymous</span>
@@ -135,8 +132,8 @@ else
 
     private static string TabHint(PostStatus status) => status switch
     {
-        PostStatus.Active => "Open requests people can still respond to.",
-        PostStatus.Answered => "Resolved requests. People can still celebrate with you.",
+        PostStatus.Active => "Open requests people can still respond to. Open a post to share an update.",
+        PostStatus.Answered => "Resolved requests. People can still celebrate with you, and you can share how it turned out.",
         _ => "Closed requests, hidden from community feeds. Only you can see them.",
     };
 

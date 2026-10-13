@@ -12,6 +12,7 @@ using PrayerApp.Api.Data;
 using PrayerApp.Api.Moderation;
 using PrayerApp.Api.Notifications;
 using PrayerApp.Api.Posts;
+using PrayerApp.Api.Profile;
 using PrayerApp.Domain.Entities;
 using PrayerApp.Domain.Ranking;
 
@@ -144,9 +145,11 @@ app.MapAuthEndpoints();
 app.MapCommunityEndpoints();
 app.MapPostEndpoints();
 app.MapPostImageEndpoints();
+app.MapPostUpdateEndpoints();
 app.MapAcknowledgmentEndpoints();
 app.MapNotificationEndpoints();
 app.MapModerationEndpoints();
 app.MapAdminEndpoints();
+app.MapProfileEndpoints();
 
 app.Run();

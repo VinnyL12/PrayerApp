@@ -1,4 +1,6 @@
+@page "/profile/moderation"
 @page "/moderation"
+@layout ProfileLayout
 @attribute [Authorize(Roles = Roles.Admin)]
 @inject PrayerApiClient Api
 @inject ModerationState State

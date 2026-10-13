@@ -323,6 +323,24 @@ public static class DemoDataSeeder
             ]),
     ];
 
+    /// <summary>
+    /// Follow-ups on seeded posts, matched by the start of the post's body. Each post gets
+    /// its updates only if it has none yet, so this is safe on every start and also fills
+    /// in databases seeded before updates existed.
+    /// </summary>
+    private static readonly (string PostStartsWith, (string Body, double HoursAgo)[] Updates)[] SeededUpdates =
+    [
+        ("My dad goes in for heart surgery", [("Out of surgery after six hours. The surgeon says it went as well as they could have hoped. Thank you, all of you.", 1.5)]),
+        ("Starting chemo next week", [("First session done. Tired, but okay. Your messages helped more than you know.", 4)]),
+        ("Laid off on Monday", [("Two interviews lined up for next week. Still scared, but hopeful.", 3)]),
+        ("Our newborn is in the NICU", [("She's breathing on her own for short stretches now. Small steps.", 1)]),
+        ("My sister has been in the hospital", [
+            ("Doctors switched her antibiotics and the fever finally broke.", 18),
+            ("She's off oxygen and might come home this weekend!", 5),
+        ]),
+        ("My son and I haven't spoken", [("He wrote back. Just two lines, but he wrote back.", 2)]),
+    ];
+
     // The demo user is an owner (Admin:Emails in appsettings.Development.json), so it
     // reviews reports rather than filing them.
     private const string DemoAdmin = "demo";
@@ -602,6 +620,50 @@ public static class DemoDataSeeder
         {
             await SeedPersonalAsync(db, userManager, personalAccounts, communities, users, now, logger, ct);
         }
+
+        await SeedUpdatesAsync(db, now, ct);
+    }
+
+    private static async Task SeedUpdatesAsync(AppDbContext db, DateTimeOffset now, CancellationToken ct)
+    {
+        foreach (var (startsWith, updates) in SeededUpdates)
+        {
+            var post = await db.Posts
+                .Where(p => p.Body.StartsWith(startsWith) && !p.Updates.Any())
+                .Select(p => new { p.Id, p.AuthorId, p.CreatedAt })
+                .FirstOrDefaultAsync(ct);
+            if (post is null)
+            {
+                continue;
+            }
+
+            var supporters = await db.Acknowledgments
+                .Where(a => a.PostId == post.Id)
+                .Select(a => a.UserId)
+                .ToListAsync(ct);
+
+            foreach (var (body, hoursAgo) in updates)
+            {
+                // Never before the post itself, however recent it is.
+                var at = now.AddHours(-hoursAgo) > post.CreatedAt ? now.AddHours(-hoursAgo) : post.CreatedAt.AddMinutes(30);
+                var update = new PostUpdate { PostId = post.Id, Body = body, CreatedAt = at };
+                db.PostUpdates.Add(update);
+
+                // What the endpoint's fan-out would have written. Recent ones stay unread.
+                db.Notifications.AddRange(supporters.Select(userId => new Notification
+                {
+                    RecipientUserId = userId,
+                    PostId = post.Id,
+                    PostUpdate = update,
+                    ActorUserId = post.AuthorId,
+                    Type = NotificationType.PostUpdated,
+                    CreatedAt = at,
+                    IsRead = at < now.AddHours(-24),
+                }));
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
     }
 
     private static async Task SeedPersonalAsync(

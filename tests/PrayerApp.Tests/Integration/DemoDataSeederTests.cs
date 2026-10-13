@@ -39,6 +39,13 @@ public class DemoDataSeederTests(ApiFactory factory)
         Assert.True(await db.Reports.CountAsync(r => r.ResolvedAt == null) >= 4);
         Assert.False(await db.Reports.AnyAsync(r => r.ReporterUserId == r.Post.AuthorId));
         Assert.False(await db.Reports.AnyAsync(r => r.Reporter.Email == DemoDataSeeder.DemoEmail));
+
+        // Some posts have follow-ups, and only people who responded were notified of them.
+        Assert.True(await db.PostUpdates.CountAsync() >= 6);
+        Assert.False(await db.PostUpdates.AnyAsync(u => u.CreatedAt < u.Post.CreatedAt));
+        Assert.True(await db.Notifications.AnyAsync(n => n.Type == NotificationType.PostUpdated));
+        Assert.False(await db.Notifications.AnyAsync(n => n.Type == NotificationType.PostUpdated
+            && !db.Acknowledgments.Any(a => a.PostId == n.PostId && a.UserId == n.RecipientUserId)));
     }
 
     [Fact]

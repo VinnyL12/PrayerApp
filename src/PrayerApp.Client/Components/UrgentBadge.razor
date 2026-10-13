@@ -1,0 +1,25 @@
+@inject TimeProvider Time
+
+@if (IsHighlighted(Post, Time.GetUtcNow()))
+{
+    <span class="urgent-badge" title="The author asked for prayer soon">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+        Urgent
+    </span>
+}
+
+@code {
+    [Parameter, EditorRequired] public PostDto Post { get; set; } = default!;
+
+    /// <summary>
+    /// How long an urgent post stands out. The feed ranker already lets urgency fade with
+    /// age; the look fades with it, so a week-old request doesn't still read as an emergency.
+    /// </summary>
+    public static readonly TimeSpan HighlightWindow = TimeSpan.FromHours(48);
+
+    /// <summary>Urgent, still open, and recent. Shared with PostCard, which tints the whole card.</summary>
+    public static bool IsHighlighted(PostDto post, DateTimeOffset now) =>
+        post.IsUrgent
+        && post.Status == PostStatus.Active
+        && now - post.CreatedAt < HighlightWindow;
+}

@@ -16,6 +16,8 @@ else
 
     <PostCard Post="_post" PostChanged="p => _post = p" ShowLink="false" />
 
+    <PostUpdates Post="_post" PostChanged="p => _post = p" />
+
     @if (_post.IsMine)
     {
         <section class="card">

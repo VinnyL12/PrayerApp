@@ -5,6 +5,7 @@ using PrayerApp.Shared.Contracts.Communities;
 using PrayerApp.Shared.Contracts.Moderation;
 using PrayerApp.Shared.Contracts.Notifications;
 using PrayerApp.Shared.Contracts.Posts;
+using PrayerApp.Shared.Contracts.Profile;
 using PrayerApp.Shared.Enums;
 
 namespace PrayerApp.Client.Services;
@@ -43,6 +44,15 @@ public sealed class PrayerApiClient(HttpClient http)
 
     public Task<ApiResult<List<PostDto>>> GetMyPostsAsync() =>
         GetAsync<List<PostDto>>("/me/posts");
+
+    public Task<ApiResult<List<PostUpdateDto>>> GetPostUpdatesAsync(int postId) =>
+        GetAsync<List<PostUpdateDto>>($"/posts/{postId}/updates");
+
+    public Task<ApiResult<PostUpdateCreated>> AddPostUpdateAsync(int postId, string body) =>
+        SendAsync<PostUpdateCreated>(HttpMethod.Post, $"/posts/{postId}/updates", new CreatePostUpdateRequest { Body = body });
+
+    public Task<ApiResult> DeletePostUpdateAsync(int postId, int updateId) =>
+        SendAsync(HttpMethod.Delete, $"/posts/{postId}/updates/{updateId}");
 
     /// <summary>Attaches (or replaces) a post's image, as multipart/form-data like an HTML file input.</summary>
     public Task<ApiResult<PostDto>> UploadPostImageAsync(int postId, byte[] image, string contentType, string fileName)
@@ -128,6 +138,10 @@ public sealed class PrayerApiClient(HttpClient http)
             return null;
         }
     }
+
+    // Profile
+
+    public Task<ApiResult<ProfileDto>> GetProfileAsync() => GetAsync<ProfileDto>("/me/profile");
 
     // Admin
 

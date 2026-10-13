@@ -29,5 +29,13 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
             .WithMany()
             .HasForeignKey(n => n.PostId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // NoAction, not Cascade: Post -> PostUpdate -> Notification would be a second
+        // cascade path from Posts to Notifications next to Post -> Notification, which SQL
+        // Server rejects. Deleting an update removes its notifications explicitly instead.
+        builder.HasOne(n => n.PostUpdate)
+            .WithMany()
+            .HasForeignKey(n => n.PostUpdateId)
+            .OnDelete(DeleteBehavior.NoAction);
     }
 }

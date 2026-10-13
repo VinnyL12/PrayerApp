@@ -44,5 +44,12 @@ public static class PostQueries
             // Only the id: a LEFT JOIN on the unique PostId index, never the image bytes.
             p.Image != null ? p.Image.Id : null,
             p.ModerationStatus,
-            p.Reports.Any(r => r.ReporterUserId == me)));
+            p.Reports.Any(r => r.ReporterUserId == me),
+            p.Updates.Count,
+            // TOP 1 per post via the (PostId, CreatedAt DESC) index: a seek, not a sort.
+            p.Updates
+                .OrderByDescending(u => u.CreatedAt)
+                .ThenByDescending(u => u.Id)
+                .Select(u => new PostUpdateDto(u.Id, u.Body, u.CreatedAt))
+                .FirstOrDefault()));
 }

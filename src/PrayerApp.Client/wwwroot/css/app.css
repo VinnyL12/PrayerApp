@@ -29,6 +29,8 @@
     /* Status */
     --urgent: #b4532a;
     --urgent-soft: #fbece4;
+    --urgent-wash: #fcf1ea;
+    --urgent-border: #eed6c8;
     --answered: #8a6a1f;
     --answered-soft: #f6eedb;
     --error: #b42318;
@@ -72,6 +74,8 @@
 
         --urgent: #ec9a74;
         --urgent-soft: #3a2820;
+        --urgent-wash: #2a2125;
+        --urgent-border: #4a3631;
         --answered: #e2c27a;
         --answered-soft: #352d1c;
         --error: #f3968b;
@@ -267,6 +271,52 @@ h1:focus {
     color: var(--text-soft);
 }
 
+/* Avatar and name together: one target that opens the profile. */
+.account-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.2rem 0.75rem 0.2rem 0.2rem;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: background-color 0.15s;
+}
+
+.account-link:hover {
+    background: var(--surface-sunken);
+}
+
+.account-link.active {
+    background: var(--primary-soft);
+}
+
+.account-link.active .account-name {
+    color: var(--primary);
+}
+
+.avatar-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+/* Reported posts waiting, for admins: a small count on the avatar's corner. */
+.avatar-badge {
+    position: absolute;
+    top: -4px;
+    right: -6px;
+    min-width: 1.05rem;
+    height: 1.05rem;
+    padding: 0 0.28rem;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--error);
+    color: var(--on-error);
+    font-size: 0.62rem;
+    font-weight: 700;
+    box-shadow: 0 0 0 2px var(--bg);
+}
+
 /* ---- Layout ------------------------------------------------------------------ */
 
 .page {
@@ -336,24 +386,6 @@ h1:focus {
     margin-bottom: 1rem;
 }
 
-.community-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1.25rem;
-    border-bottom: 1px solid var(--border);
-}
-
-.community-header p {
-    margin: 0.2rem 0;
-}
-
-.community-header-text {
-    flex: 1;
-}
-
 .member-count {
     display: inline-flex;
     align-items: center;
@@ -377,8 +409,28 @@ h1:focus {
     padding: 1.2rem 1.35rem 1.1rem;
 }
 
+/* Urgent: noticeable when scanning, never louder than the posts around it. A warm wash
+   that fades out a few lines down, like candlelight, and a hairline warm border instead
+   of a heavy bar. Same size, same layout, same weight of text as every other post. */
 .post-urgent {
-    border-left: 4px solid var(--urgent);
+    border-color: var(--urgent-border);
+    background: linear-gradient(180deg, var(--urgent-wash) 0, var(--surface) 7.5rem);
+}
+
+.urgent-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.1rem 0.55rem 0.1rem 0.45rem;
+    border-radius: 999px;
+    background: var(--urgent-soft);
+    color: var(--urgent);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.composer-hint {
+    margin: 0.6rem 0 0;
 }
 
 .post-meta {
@@ -512,7 +564,6 @@ a.post-link:hover {
     text-transform: uppercase;
 }
 
-.tag-urgent { background: var(--urgent-soft); color: var(--urgent); }
 .tag-answered { background: var(--answered-soft); color: var(--answered); }
 .tag-moderation { background: var(--error-soft); color: var(--error); }
 .tag-admin { background: var(--primary-soft); color: var(--primary); }
@@ -754,6 +805,500 @@ input[type="file"]:focus-visible + label.attach-button {
     border-radius: var(--radius-sm);
     background: var(--answered-soft);
     color: var(--answered);
+}
+
+/* ---- Community page: docked panel + feed ------------------------------------- */
+
+/* Desktop: the community page is an app-style layout, not a centered column. The panel
+   is docked to the window's left edge from under the top bar to the bottom of the screen,
+   with a straight divider; the feed fills the rest. :has() lets this one page opt out of
+   the usual 1040px centered container without touching the shared layout. */
+.page:has(.community-layout) {
+    max-width: none;
+    padding: 0;
+}
+
+.community-layout {
+    --topbar-h: 4rem;
+    /* Grows with the window: roomy on a large monitor, never squeezing the feed on a laptop. */
+    --panel-w: clamp(340px, 26vw, 400px);
+    --rail-w: 3.5rem;
+    display: grid;
+    grid-template-columns: var(--panel-w) minmax(0, 1fr);
+    min-height: calc(100vh - var(--topbar-h));
+}
+
+.community-layout.is-collapsed {
+    grid-template-columns: var(--rail-w) minmax(0, 1fr);
+}
+
+/* The panel: full height, solid, divided by a single line. It stays put while the feed
+   scrolls and scrolls on its own if the composer outgrows the window. */
+.feed-sidebar,
+.feed-rail {
+    position: sticky;
+    top: var(--topbar-h);
+    height: calc(100vh - var(--topbar-h));
+    overflow-y: auto;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+}
+
+.feed-sidebar {
+    padding: 1.75rem 1.5rem;
+}
+
+.sidebar-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sidebar-head h1 {
+    margin: 0;
+    font-size: 1.4rem;
+    line-height: 1.15;
+}
+
+/* Square-cornered icon buttons: part of the panel, not floating on it. */
+.collapse-toggle,
+.rail-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text-soft);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+
+.collapse-toggle {
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    margin-left: auto;
+}
+
+.collapse-toggle:hover,
+.rail-toggle:hover {
+    border-color: var(--primary);
+    background: var(--primary-softer);
+    color: var(--primary);
+}
+
+.sidebar-description {
+    margin: 0.85rem 0 0.5rem;
+    color: var(--text-soft);
+    font-size: 0.93rem;
+}
+
+.sidebar-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 -1.5rem 1.5rem;
+    padding: 0 1.5rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+/* The composer is part of the panel itself rather than a card inside it. */
+.feed-sidebar .composer {
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+}
+
+.feed-sidebar .composer textarea {
+    min-height: 9.5rem;
+}
+
+.feed-sidebar .composer-row {
+    gap: 0.6rem 0.9rem;
+}
+
+.feed-sidebar .composer-row .counter {
+    margin-left: 0;
+}
+
+.feed-sidebar .composer-row .button[type="submit"] {
+    width: 100%;
+}
+
+.feed-sidebar .image-preview img {
+    max-width: 100%;
+}
+
+/* Collapsed: the same docked panel, narrowed to a strip. */
+.feed-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.rail-toggle {
+    width: 2.25rem;
+    height: 2.25rem;
+}
+
+.feed-rail .community-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+}
+
+/* The community's name, running down the strip. */
+.rail-name {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+/* The feed: centered in the remaining space at a readable width, open or collapsed. */
+.feed-column {
+    width: 100%;
+    max-width: calc(760px + 4rem);
+    justify-self: center;
+    padding: 1.75rem 2rem 3rem;
+}
+
+/* Narrow windows and phones: the panel stacks above the feed (unchanged from before). */
+@media (max-width: 900px) {
+    .page:has(.community-layout) {
+        padding: 1.75rem 1.25rem 3rem;
+    }
+
+    .community-layout,
+    .community-layout.is-collapsed {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1.25rem;
+        min-height: 0;
+    }
+
+    .feed-sidebar,
+    .feed-rail {
+        position: static;
+        height: auto;
+        overflow: visible;
+        background: none;
+        border-right: none;
+    }
+
+    .feed-sidebar {
+        padding: 0;
+    }
+
+    .sidebar-meta {
+        margin: 0 0 1.1rem;
+        padding: 0 0 1.1rem;
+    }
+
+    .feed-sidebar .composer {
+        padding: 0.9rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        box-shadow: var(--shadow);
+    }
+
+    .feed-rail {
+        flex-direction: row;
+        padding: 0;
+    }
+
+    .rail-name {
+        writing-mode: horizontal-tb;
+        transform: none;
+        font-size: 0.95rem;
+        color: var(--text);
+    }
+
+    .feed-column {
+        max-width: none;
+        padding: 0;
+    }
+}
+
+/* ---- Profile ----------------------------------------------------------------- */
+
+.profile-layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 2.5rem;
+    align-items: start;
+}
+
+.profile-menu {
+    position: sticky;
+    top: 5.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.profile-menu a {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: var(--radius-sm);
+    color: var(--text-soft);
+    font-size: 0.93rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.profile-menu a:hover {
+    background: var(--surface-sunken);
+    color: var(--text);
+}
+
+.profile-menu a.active {
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+
+.profile-menu .count-pill {
+    margin-left: auto;
+}
+
+/* Set apart at the bottom of the menu, like the last item in an account menu. */
+.profile-signout {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 1rem;
+    padding: 0.85rem 0.75rem 0.55rem;
+    border: none;
+    border-top: 1px solid var(--border);
+    background: none;
+    color: var(--text-soft);
+    font: inherit;
+    font-size: 0.93rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+
+.profile-signout:hover {
+    color: var(--error);
+}
+
+.profile-menu-label {
+    margin: 1rem 0 0.3rem;
+    padding: 0 0.75rem;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* Content pages inside the profile keep their own readable width, left-aligned. */
+.profile-content .readable {
+    margin: 0;
+}
+
+.profile-head {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-bottom: 1.75rem;
+}
+
+.profile-head h1 {
+    margin: 0;
+}
+
+.profile-head p {
+    margin: 0.15rem 0 0;
+}
+
+.avatar-lg {
+    width: 72px;
+    height: 72px;
+    font-size: 1.6rem;
+}
+
+.profile-role {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.5rem !important;
+}
+
+.profile-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 0 0 1.5rem;
+}
+
+.profile-stats div {
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+
+.profile-stats dt {
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.profile-stats dd {
+    margin: 0.25rem 0 0;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 1.9rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.profile-links {
+    display: flex;
+    gap: 0.6rem;
+}
+
+@media (max-width: 900px) {
+    .profile-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1.5rem;
+    }
+
+    /* The menu becomes a row of tabs above the content. */
+    .profile-menu {
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .profile-menu-label {
+        display: none;
+    }
+
+    .profile-signout {
+        margin: 0 0 0 auto;
+        padding: 0.55rem 0.75rem;
+        border-top: none;
+    }
+
+    .profile-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* ---- Post updates ------------------------------------------------------------ */
+
+/* The latest update under a post in feeds: set apart like a reply, in the author's voice. */
+.update-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 0.85rem;
+    padding: 0.6rem 0.85rem;
+    border-left: 2px solid var(--primary);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background: var(--primary-softer);
+    color: var(--text);
+    text-decoration: none;
+}
+
+.update-preview:hover {
+    background: var(--primary-soft);
+}
+
+.update-preview-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--primary);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* At most three lines in a feed; the full text is on the post's page. */
+.update-preview-body {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.95rem;
+}
+
+.post-updates h2 {
+    margin-top: 0;
+}
+
+.update-composer textarea {
+    resize: vertical;
+}
+
+.update-composer-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-top: 0.6rem;
+}
+
+.update-timeline {
+    margin: 1.1rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* A vertical thread connecting updates, newest at the top. */
+.update-timeline li {
+    position: relative;
+    padding: 0 0 1.1rem 1.25rem;
+    border-left: 2px solid var(--border);
+}
+
+.update-timeline li:last-child {
+    padding-bottom: 0.2rem;
+}
+
+.update-timeline li::before {
+    content: "";
+    position: absolute;
+    left: -6px;
+    top: 0.3rem;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--primary);
+    box-shadow: 0 0 0 3px var(--surface);
+}
+
+.update-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.update-body {
+    margin: 0.3rem 0 0;
+    white-space: pre-line;
 }
 
 /* ---- Reporting and moderation ------------------------------------------------ */
@@ -1047,21 +1592,25 @@ input[type="file"]:focus-visible + label.attach-button {
 
 /* ---- Notification bell ------------------------------------------------------- */
 
-.nav a.bell {
+a.bell {
     position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 40px;
     height: 40px;
-    padding: 0;
-    justify-content: center;
+    border-radius: 999px;
     color: var(--primary);
+    text-decoration: none;
+    transition: background-color 0.15s, color 0.15s;
 }
 
-.nav a.bell:hover {
+a.bell:hover {
     background: var(--primary-soft);
     color: var(--primary);
 }
 
-.nav a.bell.active {
+a.bell.active {
     background: var(--primary);
     color: var(--on-primary);
 }
@@ -1676,6 +2225,7 @@ input[type="checkbox"] {
     .nav { order: 3; width: 100%; margin: 0 -0.75rem; }
     .account { padding-left: 0; border-left: none; }
     .account-name { display: none; }
+    .account-link { padding: 0.2rem; }
     .auth-card { padding: 1.75rem 1.25rem; }
     .counter { margin-left: 0; }
     .breakdown li { grid-template-columns: 1fr 2rem; }

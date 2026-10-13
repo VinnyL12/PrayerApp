@@ -322,6 +322,9 @@ namespace PrayerApp.Api.Data.Migrations
                     b.Property<int>("PostId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("PostUpdateId")
+                        .HasColumnType("int");
+
                     b.Property<Guid>("RecipientUserId")
                         .HasColumnType("uniqueidentifier");
 
@@ -333,6 +336,8 @@ namespace PrayerApp.Api.Data.Migrations
                     b.HasIndex("ActorUserId");
 
                     b.HasIndex("PostId");
+
+                    b.HasIndex("PostUpdateId");
 
                     b.HasIndex("RecipientUserId", "IsRead", "CreatedAt")
                         .IsDescending(false, false, true);
@@ -424,6 +429,33 @@ namespace PrayerApp.Api.Data.Migrations
                     SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("PostId"));
 
                     b.ToTable("PostImages");
+                });
+
+            modelBuilder.Entity("PrayerApp.Domain.Entities.PostUpdate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("PostId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId", "CreatedAt")
+                        .IsDescending(false, true);
+
+                    b.ToTable("PostUpdates");
                 });
 
             modelBuilder.Entity("PrayerApp.Domain.Entities.RefreshToken", b =>
@@ -693,6 +725,11 @@ namespace PrayerApp.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("PrayerApp.Domain.Entities.PostUpdate", "PostUpdate")
+                        .WithMany()
+                        .HasForeignKey("PostUpdateId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("PrayerApp.Domain.Entities.User", "Recipient")
                         .WithMany("Notifications")
                         .HasForeignKey("RecipientUserId")
@@ -702,6 +739,8 @@ namespace PrayerApp.Api.Data.Migrations
                     b.Navigation("Actor");
 
                     b.Navigation("Post");
+
+                    b.Navigation("PostUpdate");
 
                     b.Navigation("Recipient");
                 });
@@ -730,6 +769,17 @@ namespace PrayerApp.Api.Data.Migrations
                     b.HasOne("PrayerApp.Domain.Entities.Post", "Post")
                         .WithOne("Image")
                         .HasForeignKey("PrayerApp.Domain.Entities.PostImage", "PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("PrayerApp.Domain.Entities.PostUpdate", b =>
+                {
+                    b.HasOne("PrayerApp.Domain.Entities.Post", "Post")
+                        .WithMany("Updates")
+                        .HasForeignKey("PostId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -787,6 +837,8 @@ namespace PrayerApp.Api.Data.Migrations
                     b.Navigation("Image");
 
                     b.Navigation("Reports");
+
+                    b.Navigation("Updates");
                 });
 
             modelBuilder.Entity("PrayerApp.Domain.Entities.User", b =>

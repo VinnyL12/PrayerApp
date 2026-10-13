@@ -10,6 +10,9 @@ public class Notification
 
     public int PostId { get; set; }
 
+    /// <summary>For PostUpdated notifications: which update, so deleting it can remove them.</summary>
+    public int? PostUpdateId { get; set; }
+
     // Internal only: acknowledger identities are never shown to authors. Kept so the
     // pipeline can deduplicate and so the row is traceable when debugging.
     public Guid ActorUserId { get; set; }
@@ -23,6 +26,8 @@ public class Notification
     public User Recipient { get; set; } = null!;
 
     public Post Post { get; set; } = null!;
+
+    public PostUpdate? PostUpdate { get; set; }
 
     public User Actor { get; set; } = null!;
 }

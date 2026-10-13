@@ -1,0 +1,178 @@
+@inject PrayerApiClient Api
+@inject TimeProvider Time
+
+@* Shown to the author always (that's where they post updates), and to everyone else
+   once there's at least one update to read. *@
+@if (Post.IsMine || Post.UpdateCount > 0)
+{
+    <section class="card post-updates" id="updates">
+        <h2>Updates</h2>
+
+        @if (Post.IsMine)
+        {
+            @if (CanAdd)
+            {
+                <form class="update-composer" @onsubmit="AddAsync" @onsubmit:preventDefault>
+                    <label class="visually-hidden" for="update-body">Share an update</label>
+                    <textarea id="update-body" class="input" rows="3" maxlength="@PostUpdateRules.MaxLength"
+                              placeholder="How are things now? Everyone who responded will hear about it."
+                              @bind="_body" @bind:event="oninput"></textarea>
+                    <div class="update-composer-row">
+                        <span class="muted small">
+                            @(Post.AcknowledgmentCount switch
+                            {
+                                0 => "No one has responded yet, so no one will be notified.",
+                                1 => "The 1 person who responded will be notified.",
+                                var n => $"The {n} people who responded will be notified.",
+                            })
+                        </span>
+                        <button type="submit" class="button button-small" disabled="@(_busy || string.IsNullOrWhiteSpace(_body))">
+                            @(_busy ? "Sharing…" : "Share update")
+                        </button>
+                    </div>
+                </form>
+            }
+            else
+            {
+                <p class="muted small">@CannotAddReason</p>
+            }
+        }
+
+        @if (_message is not null)
+        {
+            <p class="notice-success" role="status">@_message</p>
+        }
+
+        @if (_error is not null)
+        {
+            <p class="error small">@_error</p>
+        }
+
+        @if (_updates is null)
+        {
+            <p class="muted small">Loading updates…</p>
+        }
+        else if (_updates.Count == 0)
+        {
+            <p class="muted small">No updates yet. When things change, share it here so the people who prayed with you know.</p>
+        }
+        else
+        {
+            <ol class="update-timeline">
+                @foreach (var update in _updates)
+                {
+                    <li @key="update.Id">
+                        <div class="update-meta">
+                            <span class="muted small">@TimeFormat.Ago(update.CreatedAt, Time.GetUtcNow())</span>
+                            @if (Post.IsMine)
+                            {
+                                @if (_confirmDeleteId == update.Id)
+                                {
+                                    <span class="small">Delete it, and its notifications?</span>
+                                    <button class="link-button quiet" disabled="@_busy" @onclick="() => _confirmDeleteId = null">Cancel</button>
+                                    <button class="link-button quiet danger" disabled="@_busy" @onclick="() => DeleteAsync(update)">Delete</button>
+                                }
+                                else
+                                {
+                                    <button class="link-button quiet" disabled="@_busy" @onclick="() => _confirmDeleteId = update.Id">Delete</button>
+                                }
+                            }
+                        </div>
+                        <p class="update-body">@update.Body</p>
+                    </li>
+                }
+            </ol>
+        }
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired] public PostDto Post { get; set; } = default!;
+    [Parameter] public EventCallback<PostDto> PostChanged { get; set; }
+
+    private List<PostUpdateDto>? _updates;
+    private int? _loadedFor;
+    private string? _body;
+    private int? _confirmDeleteId;
+    private bool _busy;
+    private string? _message;
+    private string? _error;
+
+    // Same rules the API enforces; checking here just explains why the box is missing.
+    private bool CanAdd => CannotAddReason is null;
+
+    private string? CannotAddReason =>
+        Post.Status == PostStatus.Archived ? "This post is archived, so it can't get new updates."
+        : Post.ModerationStatus != ModerationStatus.Visible ? "This post is hidden while it's reviewed, so it can't get updates."
+        : Post.UpdateCount >= PostUpdateRules.MaxPerPost ? $"This post has reached the limit of {PostUpdateRules.MaxPerPost} updates."
+        : null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Parameters change every time the parent re-renders (e.g. after a response); only
+        // fetch when it's actually a different post.
+        if (_loadedFor == Post.Id || !(Post.IsMine || Post.UpdateCount > 0))
+        {
+            return;
+        }
+
+        _loadedFor = Post.Id;
+        var result = await Api.GetPostUpdatesAsync(Post.Id);
+        _updates = result.Value;
+        _error = result.Error;
+    }
+
+    private async Task AddAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_body))
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        _message = null;
+
+        var result = await Api.AddPostUpdateAsync(Post.Id, _body);
+        if (result.Succeeded)
+        {
+            var created = result.Value!;
+            (_updates ??= []).Insert(0, created.Update);
+            _body = null;
+            _message = created.Notified switch
+            {
+                0 => "Update shared. It's on your post for anyone who visits.",
+                1 => "Update shared with the 1 person who responded.",
+                var n => $"Update shared with the {n} people who responded.",
+            };
+            await PostChanged.InvokeAsync(Post with { UpdateCount = Post.UpdateCount + 1, LatestUpdate = created.Update });
+        }
+        else
+        {
+            _error = result.Error;
+        }
+
+        _busy = false;
+    }
+
+    private async Task DeleteAsync(PostUpdateDto update)
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+
+        var result = await Api.DeletePostUpdateAsync(Post.Id, update.Id);
+        if (result.Succeeded)
+        {
+            _updates!.Remove(update);
+            _confirmDeleteId = null;
+            await PostChanged.InvokeAsync(Post with { UpdateCount = _updates.Count, LatestUpdate = _updates.FirstOrDefault() });
+        }
+        else
+        {
+            _error = result.Error;
+        }
+
+        _busy = false;
+    }
+}

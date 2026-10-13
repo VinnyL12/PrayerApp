@@ -41,4 +41,6 @@ public class Post
     public ICollection<Acknowledgment> Acknowledgments { get; } = [];
 
     public ICollection<Report> Reports { get; } = [];
+
+    public ICollection<PostUpdate> Updates { get; } = [];
 }

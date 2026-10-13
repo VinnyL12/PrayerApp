@@ -4,63 +4,98 @@
 
 <PageTitle>@(_community?.Name ?? "Community") · Prayer App</PageTitle>
 
-<div class="readable">
-
 @if (_community is null)
 {
-    <p class="@(_error is null ? "muted" : "error")">@(_error ?? "Loading…")</p>
+    <div class="readable">
+        <p class="@(_error is null ? "muted" : "error")">@(_error ?? "Loading…")</p>
+    </div>
 }
 else
 {
-    <header class="community-header">
-        <CommunityIcon Category="_community.Category" Large="true" />
-        <div class="community-header-text">
-            <h1>@_community.Name</h1>
-            <p class="muted">@_community.Description</p>
-            <p class="member-count">@_community.MemberCount @(_community.MemberCount == 1 ? "member" : "members")</p>
-        </div>
-        @if (_community.IsMember)
+    @* Two columns: the community and the composer on the left (sticky while the feed
+       scrolls), posts on the right. Collapsing folds the left side into a slim rail. *@
+    <div class="community-layout @(_collapsed ? "is-collapsed" : "")">
+        @if (_collapsed)
         {
-            <button class="button button-quiet button-small" disabled="@_busy" @onclick="LeaveAsync">Leave</button>
+            <aside class="feed-rail" aria-label="@_community.Name">
+                <button class="rail-toggle" @onclick="() => SetCollapsed(false)"
+                        title="Show community and new post" aria-label="Show community and new post" aria-expanded="false">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+                </button>
+                <CommunityIcon Category="_community.Category" />
+                <span class="rail-name">@_community.Name</span>
+            </aside>
         }
-    </header>
-
-    @if (!_community.IsMember)
-    {
-        <div class="card empty">
-            <p>Join this community to read and share prayer requests.</p>
-            <button class="button" disabled="@_busy" @onclick="JoinAsync">Join @_community.Name</button>
-        </div>
-    }
-    else
-    {
-        <PostComposer CommunityId="Id" OnPosted="OnPosted" />
-
-        @if (_error is not null)
+        else
         {
-            <p class="error">@_error</p>
+            <aside class="feed-sidebar" aria-label="@_community.Name">
+                <header class="sidebar-head">
+                    <CommunityIcon Category="_community.Category" />
+                    <h1>@_community.Name</h1>
+                    <button class="collapse-toggle" @onclick="() => SetCollapsed(true)"
+                            title="Hide this panel" aria-label="Hide community panel" aria-expanded="true">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+                    </button>
+                </header>
+
+                <p class="sidebar-description">@_community.Description</p>
+
+                <div class="sidebar-meta">
+                    <span class="member-count">@_community.MemberCount @(_community.MemberCount == 1 ? "member" : "members")</span>
+                    @if (_community.IsMember)
+                    {
+                        <button class="link-button quiet" disabled="@_busy" @onclick="LeaveAsync">Leave</button>
+                    }
+                </div>
+
+                @if (_community.IsMember)
+                {
+                    <PostComposer CommunityId="Id" OnPosted="OnPosted" />
+                }
+                else
+                {
+                    <button class="button button-block" disabled="@_busy" @onclick="JoinAsync">Join @_community.Name</button>
+                }
+            </aside>
         }
 
-        @if (_posts.Count == 0 && !_loading)
-        {
-            <p class="muted center">No posts yet. Be the first to share.</p>
-        }
+        <section class="feed-column" aria-label="Posts">
+            @if (!_community.IsMember)
+            {
+                <div class="card empty">
+                    <p>Join this community to read and share prayer requests.</p>
+                </div>
+            }
+            else
+            {
+                @if (_error is not null)
+                {
+                    <p class="error">@_error</p>
+                }
 
-        @foreach (var post in _posts)
-        {
-            @* @key helps Blazor match list items across renders, like key={post.id} in React. *@
-            <PostCard @key="post.Id" Post="post" PostChanged="ReplacePost" />
-        }
+                @if (_posts.Count == 0 && !_loading)
+                {
+                    <div class="card empty">
+                        <p>No posts yet. Be the first to share.</p>
+                    </div>
+                }
 
-        @if (_nextCursor is not null)
-        {
-            <button class="button button-quiet button-block" disabled="@_loading" @onclick="LoadMoreAsync">
-                @(_loading ? "Loading…" : "Load more")
-            </button>
-        }
-    }
+                @foreach (var post in _posts)
+                {
+                    @* @key helps Blazor match list items across renders, like key={post.id} in React. *@
+                    <PostCard @key="post.Id" Post="post" PostChanged="ReplacePost" />
+                }
+
+                @if (_nextCursor is not null)
+                {
+                    <button class="button button-quiet button-block" disabled="@_loading" @onclick="LoadMoreAsync">
+                        @(_loading ? "Loading…" : "Load more")
+                    </button>
+                }
+            }
+        </section>
+    </div>
 }
-</div>
 
 @code {
     // Route parameter, like useParams().id. Blazor parses it to int because of {Id:int}.
@@ -72,6 +107,10 @@ else
     private string? _error;
     private bool _loading;
     private bool _busy;
+    // Starts expanded on every visit; collapsing lasts until you leave the page.
+    private bool _collapsed;
+
+    private void SetCollapsed(bool collapsed) => _collapsed = collapsed;
 
     // Runs when the route parameter changes too (navigating community → community reuses
     // this component instance), unlike OnInitializedAsync which runs once.
