@@ -302,8 +302,8 @@ h1:focus {
 /* Reported posts waiting, for admins: a small count on the avatar's corner. */
 .avatar-badge {
     position: absolute;
-    top: -4px;
-    right: -6px;
+    top: -7px;
+    right: -10px;
     min-width: 1.05rem;
     height: 1.05rem;
     padding: 0 0.28rem;
