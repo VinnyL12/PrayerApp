@@ -134,6 +134,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapAuthEndpoints();
 app.MapCommunityEndpoints();
 app.MapPostEndpoints();
+app.MapPostImageEndpoints();
 app.MapAcknowledgmentEndpoints();
 app.MapNotificationEndpoints();
 

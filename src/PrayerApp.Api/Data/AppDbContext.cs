@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Community> Communities => Set<Community>();
     public DbSet<CommunityMembership> CommunityMemberships => Set<CommunityMembership>();
     public DbSet<Post> Posts => Set<Post>();
+    public DbSet<PostImage> PostImages => Set<PostImage>();
     public DbSet<Acknowledgment> Acknowledgments => Set<Acknowledgment>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();

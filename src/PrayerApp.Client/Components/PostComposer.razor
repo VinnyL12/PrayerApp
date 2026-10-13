@@ -11,7 +11,46 @@
                        placeholder="Share what's on your heart…" />
         <ValidationMessage For="() => _request.Body" class="error small" />
 
+        @if (_image is not null || _showLink)
+        {
+            <div class="composer-attachments">
+                @if (_image is not null)
+                {
+                    <div class="image-preview">
+                        <img src="@_image.PreviewUrl" alt="Photo to attach" />
+                        <button type="button" class="link-button quiet" disabled="@_busy" @onclick="RemoveImage">Remove photo</button>
+                    </div>
+                }
+
+                @if (_showLink)
+                {
+                    <div class="link-field">
+                        <label for="post-link">Link <span class="muted">(optional)</span></label>
+                        <InputText id="post-link" class="input" @bind-Value="_request.Link" inputmode="url"
+                                   placeholder="https://gofundme.com/f/… or https://cash.app/$…" />
+                        <ValidationMessage For="() => _request.Link" class="error small" />
+                        <p class="muted small">For a fundraiser, payment page or anything that helps people support you.</p>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (_request.IsAnonymous && (_image is not null || !string.IsNullOrWhiteSpace(_request.Link)))
+        {
+            <p class="notice small">Photos and payment links can reveal who you are, even on an anonymous post.</p>
+        }
+
         <div class="composer-row">
+            @* The real file input is hidden; its label is the visible button. @key gives a
+               fresh input after "Remove photo", so picking the same file again still fires. *@
+            <InputFile @key="_fileInputKey" id="post-image" class="visually-hidden"
+                       accept="@PostImageRules.AcceptAttribute" OnChange="OnImageSelectedAsync" disabled="@_busy" />
+            <label for="post-image" class="attach-button">@(_image is null ? "Add photo" : "Change photo")</label>
+            @if (!_showLink)
+            {
+                <button type="button" class="attach-button" @onclick="() => _showLink = true">Add link</button>
+            }
+
             <label class="check">
                 <InputCheckbox @bind-Value="_request.IsAnonymous" />
                 Post anonymously
@@ -35,28 +74,100 @@
     [Parameter, EditorRequired] public int CommunityId { get; set; }
     [Parameter] public EventCallback<PostDto> OnPosted { get; set; }
 
+    private sealed record SelectedImage(byte[] Bytes, string ContentType, string FileName, string PreviewUrl);
+
     private CreatePostRequest _request = NewRequest();
+    private SelectedImage? _image;
+    private bool _showLink;
+    private int _fileInputKey;
     private bool _busy;
     private string? _error;
 
     private static CreatePostRequest NewRequest() => new() { Body = "" };
 
-    private async Task SubmitAsync()
+    private async Task OnImageSelectedAsync(InputFileChangeEventArgs e)
     {
-        _busy = true;
         _error = null;
 
-        var result = await Api.CreatePostAsync(CommunityId, _request);
-        if (result.Succeeded)
+        try
         {
-            _request = NewRequest();
-            await OnPosted.InvokeAsync(result.Value!);
+            // The browser redraws the photo on a canvas at most MaxDimension px on its
+            // longest side and re-encodes it as JPEG. A 6 MB phone photo comes out at a few
+            // hundred KB, and the re-encode drops metadata such as the GPS location.
+            const string format = "image/jpeg";
+            var resized = await e.File.RequestImageFileAsync(format, PostImageRules.MaxDimension, PostImageRules.MaxDimension);
+
+            if (resized.Size > PostImageRules.MaxBytes)
+            {
+                _error = "That photo is too large, even after resizing. Try a different one.";
+                return;
+            }
+
+            await using var stream = resized.OpenReadStream(PostImageRules.MaxBytes);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            var bytes = buffer.ToArray();
+
+            // A data: URL shows the preview without uploading anything yet.
+            _image = new SelectedImage(bytes, format, e.File.Name,
+                $"data:{format};base64,{Convert.ToBase64String(bytes)}");
         }
-        else
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or JSException)
         {
-            _error = result.Error;
+            // Not an image the browser can decode, or the read failed.
+            _error = "That file couldn't be read as a photo. Try a JPEG, PNG or WebP image.";
+        }
+    }
+
+    private void RemoveImage()
+    {
+        _image = null;
+        _fileInputKey++;
+    }
+
+    private async Task SubmitAsync()
+    {
+        // Same rule the API applies; catching it here gives the message without a round trip.
+        if (!PostLinks.TryNormalize(_request.Link, out var link, out var linkError))
+        {
+            _error = linkError;
+            return;
         }
 
+        _busy = true;
+        _error = null;
+        _request.Link = link;
+
+        var created = await Api.CreatePostAsync(CommunityId, _request);
+        if (!created.Succeeded)
+        {
+            _error = created.Error;
+            _busy = false;
+            return;
+        }
+
+        // Two requests: create the post as JSON, then attach the photo. If the upload
+        // fails the post still exists, so say exactly that rather than "something failed".
+        var post = created.Value!;
+        if (_image is not null)
+        {
+            var uploaded = await Api.UploadPostImageAsync(post.Id, _image.Bytes, _image.ContentType, _image.FileName);
+            if (uploaded.Succeeded)
+            {
+                post = uploaded.Value!;
+            }
+            else
+            {
+                _error = $"Your post is up, but the photo didn't upload: {uploaded.Error}";
+            }
+        }
+
+        _request = NewRequest();
+        _image = null;
+        _showLink = false;
+        _fileInputKey++;
         _busy = false;
+
+        await OnPosted.InvokeAsync(post);
     }
 }

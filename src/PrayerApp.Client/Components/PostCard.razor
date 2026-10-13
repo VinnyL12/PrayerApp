@@ -28,6 +28,27 @@
         <p class="post-body">@Post.Body</p>
     }
 
+    @* The API turns an archived post's image URL off, so don't render a broken image. *@
+    @if (Post.ImageId is { } imageId && Post.Status != PostStatus.Archived)
+    {
+        <img class="post-image @(ShowLink ? "" : "post-image-full")" src="@Api.ImageUrl(imageId)"
+             alt="Photo shared with this post" loading="lazy" />
+    }
+
+    @if (Post.Link is { } link)
+    {
+        @* noopener: the new tab can't script this one. noreferrer: the site doesn't learn
+           which post sent the reader. nofollow ugc: user content, not an endorsement. *@
+        <a class="post-link-card" href="@link" target="_blank" rel="noopener noreferrer nofollow ugc">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" /><path d="M14 10a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" /></svg>
+            <span class="post-link-text">
+                <span class="post-link-title">@PostLinks.Title(link)</span>
+                <span class="muted small">@PostLinks.Host(link)</span>
+            </span>
+            <span class="visually-hidden">(opens in a new tab)</span>
+        </a>
+    }
+
     <footer class="post-footer">
         <span class="muted">@ResponseCount</span>
 

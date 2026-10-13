@@ -42,6 +42,23 @@ public sealed class PrayerApiClient(HttpClient http)
     public Task<ApiResult<List<PostDto>>> GetMyPostsAsync() =>
         GetAsync<List<PostDto>>("/me/posts");
 
+    /// <summary>Attaches (or replaces) a post's image, as multipart/form-data like an HTML file input.</summary>
+    public Task<ApiResult<PostDto>> UploadPostImageAsync(int postId, byte[] image, string contentType, string fileName)
+    {
+        var file = new ByteArrayContent(image);
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+
+        // "image" must match the endpoint's IFormFile parameter name.
+        var form = new MultipartFormDataContent { { file, "image", fileName } };
+        return SendAsync<PostDto>(HttpMethod.Put, $"/posts/{postId}/image", form);
+    }
+
+    /// <summary>
+    /// Absolute URL for an &lt;img&gt; tag. The browser fetches it directly, without our
+    /// HttpClient, so it must point at the API's origin rather than the client's.
+    /// </summary>
+    public string ImageUrl(Guid imageId) => new Uri(http.BaseAddress!, $"images/{imageId}").ToString();
+
     public Task<ApiResult<PostDto>> UpdateStatusAsync(int postId, PostStatus status) =>
         SendAsync<PostDto>(HttpMethod.Patch, $"/posts/{postId}/status", new UpdatePostStatusRequest { Status = status });
 
@@ -107,6 +124,12 @@ public sealed class PrayerApiClient(HttpClient http)
 
     private static HttpRequestMessage CreateRequest(HttpMethod method, string url, object? body) => new(method, url)
     {
-        Content = body is null ? null : JsonContent.Create(body, body.GetType(), options: ApiJson.Options),
+        Content = body switch
+        {
+            null => null,
+            // Already encoded, e.g. a multipart upload.
+            HttpContent content => content,
+            _ => JsonContent.Create(body, body.GetType(), options: ApiJson.Options),
+        },
     };
 }

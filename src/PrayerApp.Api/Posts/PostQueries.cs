@@ -36,5 +36,8 @@ public static class PostQueries
             p.Acknowledgments
                 .Where(a => a.UserId == me)
                 .Select(a => (AcknowledgmentType?)a.Type)
-                .FirstOrDefault()));
+                .FirstOrDefault(),
+            p.Link,
+            // Only the id: a LEFT JOIN on the unique PostId index, never the image bytes.
+            p.Image != null ? p.Image.Id : null));
 }

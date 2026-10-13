@@ -365,6 +365,10 @@ namespace PrayerApp.Api.Data.Migrations
                     b.Property<bool>("IsUrgent")
                         .HasColumnType("bit");
 
+                    b.Property<string>("Link")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -379,6 +383,38 @@ namespace PrayerApp.Api.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_Posts_AcknowledgmentCount_NonNegative", "[AcknowledgmentCount] >= 0");
                         });
+                });
+
+            modelBuilder.Entity("PrayerApp.Domain.Entities.PostImage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<int>("PostId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("PostId")
+                        .IsUnique();
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("PostId"));
+
+                    b.ToTable("PostImages");
                 });
 
             modelBuilder.Entity("PrayerApp.Domain.Entities.RefreshToken", b =>
@@ -631,6 +667,17 @@ namespace PrayerApp.Api.Data.Migrations
                     b.Navigation("Community");
                 });
 
+            modelBuilder.Entity("PrayerApp.Domain.Entities.PostImage", b =>
+                {
+                    b.HasOne("PrayerApp.Domain.Entities.Post", "Post")
+                        .WithOne("Image")
+                        .HasForeignKey("PrayerApp.Domain.Entities.PostImage", "PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+                });
+
             modelBuilder.Entity("PrayerApp.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("PrayerApp.Domain.Entities.User", "User")
@@ -652,6 +699,8 @@ namespace PrayerApp.Api.Data.Migrations
             modelBuilder.Entity("PrayerApp.Domain.Entities.Post", b =>
                 {
                     b.Navigation("Acknowledgments");
+
+                    b.Navigation("Image");
                 });
 
             modelBuilder.Entity("PrayerApp.Domain.Entities.User", b =>

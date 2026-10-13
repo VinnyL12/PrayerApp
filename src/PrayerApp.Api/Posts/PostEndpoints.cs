@@ -145,6 +145,14 @@ public static class PostEndpoints
             });
         }
 
+        if (!PostLinks.TryNormalize(request.Link, out var link, out var linkError))
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+            {
+                [nameof(request.Link)] = [linkError!],
+            });
+        }
+
         var access = await db.Communities
             .Where(c => c.Id == communityId)
             .Select(c => new { IsMember = c.Memberships.Any(m => m.UserId == me) })
@@ -169,6 +177,7 @@ public static class PostEndpoints
             Body = body,
             IsUrgent = request.IsUrgent,
             IsAnonymous = request.IsAnonymous,
+            Link = link,
             CreatedAt = time.GetUtcNow(),
         };
 

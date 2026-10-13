@@ -11,6 +11,10 @@ public sealed record CreatePostRequest
     public bool IsUrgent { get; set; }
 
     public bool IsAnonymous { get; set; }
+
+    /// <summary>Optional https link (fundraiser, payment page). See PostLinks.</summary>
+    [MaxLength(PostLinks.MaxLength)]
+    public string? Link { get; set; }
 }
 
 public sealed record UpdatePostStatusRequest
@@ -22,6 +26,7 @@ public sealed record UpdatePostStatusRequest
 /// <param name="AuthorDisplayName">Null when the post is anonymous and the viewer isn't the author.</param>
 /// <param name="MyAcknowledgment">The viewer's own response to this post, if any.</param>
 /// <param name="CommunityCategory">Decides which responses fit (see AcknowledgmentPolicy).</param>
+/// <param name="ImageId">The post's image, served at /images/{ImageId}; null when there's none.</param>
 public sealed record PostDto(
     int Id,
     int CommunityId,
@@ -35,7 +40,9 @@ public sealed record PostDto(
     string? AuthorDisplayName,
     bool IsMine,
     int AcknowledgmentCount,
-    AcknowledgmentType? MyAcknowledgment);
+    AcknowledgmentType? MyAcknowledgment,
+    string? Link,
+    Guid? ImageId);
 
 /// <param name="NextCursor">Pass as ?cursor= to get the next page; null on the last page.</param>
 public sealed record FeedPage(IReadOnlyList<PostDto> Posts, string? NextCursor);

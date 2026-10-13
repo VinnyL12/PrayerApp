@@ -402,6 +402,58 @@ h1:focus {
     overflow-wrap: anywhere;
 }
 
+.post-image {
+    display: block;
+    width: 100%;
+    max-height: 26rem;
+    margin-top: 0.85rem;
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    object-fit: cover;
+}
+
+/* On the post's own page, show the whole photo instead of a cropped preview. */
+.post-image-full {
+    max-height: none;
+    object-fit: contain;
+}
+
+.post-link-card {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: 0.85rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    color: var(--primary);
+    text-decoration: none;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.post-link-card:hover {
+    border-color: var(--primary);
+    background: var(--primary-softer);
+}
+
+.post-link-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.post-link-title {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.post-link-text .muted {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 a.post-link {
     text-decoration: none;
 }
@@ -632,6 +684,72 @@ a.post-link:hover {
 .counter {
     margin-left: auto;
     font-variant-numeric: tabular-nums;
+}
+
+.composer-attachments {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    margin-top: 0.85rem;
+}
+
+.image-preview {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.85rem;
+}
+
+.image-preview img {
+    max-width: 12rem;
+    max-height: 9rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    object-fit: cover;
+}
+
+.link-field label {
+    margin-top: 0;
+}
+
+.link-field p {
+    margin: 0.35rem 0 0;
+}
+
+/* "Add photo" (a label for the hidden file input) and "Add link" look the same. */
+.attach-button,
+label.attach-button {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    padding: 0.32rem 0.8rem;
+    border: 1px dashed var(--border-strong);
+    border-radius: 999px;
+    background: none;
+    color: var(--text-soft);
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+
+.attach-button:hover {
+    border-color: var(--primary);
+    background: var(--primary-softer);
+    color: var(--primary);
+}
+
+input[type="file"]:focus-visible + label.attach-button {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.notice {
+    margin: 0.75rem 0 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--answered-soft);
+    color: var(--answered);
 }
 
 /* ---- Response breakdown ------------------------------------------------------ */

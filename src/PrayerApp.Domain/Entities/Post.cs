@@ -20,6 +20,9 @@ public class Post
 
     public bool IsAnonymous { get; set; }
 
+    /// <summary>Optional https link, for example a fundraiser or payment page.</summary>
+    public string? Link { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     // Denormalized counter. Incremented in the same transaction that inserts the
@@ -29,6 +32,8 @@ public class Post
     public User Author { get; set; } = null!;
 
     public Community Community { get; set; } = null!;
+
+    public PostImage? Image { get; set; }
 
     public ICollection<Acknowledgment> Acknowledgments { get; } = [];
 }
