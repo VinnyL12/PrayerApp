@@ -33,6 +33,7 @@
     --answered-soft: #f6eedb;
     --error: #b42318;
     --error-soft: #fdecea;
+    --on-error: #ffffff;
 
     /* Shape & depth */
     --radius-sm: 8px;
@@ -75,6 +76,7 @@
         --answered-soft: #352d1c;
         --error: #f3968b;
         --error-soft: #3a2220;
+        --on-error: #1b1922;
 
         --shadow-sm: none;
         --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -512,6 +514,8 @@ a.post-link:hover {
 
 .tag-urgent { background: var(--urgent-soft); color: var(--urgent); }
 .tag-answered { background: var(--answered-soft); color: var(--answered); }
+.tag-moderation { background: var(--error-soft); color: var(--error); }
+.tag-admin { background: var(--primary-soft); color: var(--primary); }
 
 /* ---- My posts ---------------------------------------------------------------- */
 
@@ -750,6 +754,197 @@ input[type="file"]:focus-visible + label.attach-button {
     border-radius: var(--radius-sm);
     background: var(--answered-soft);
     color: var(--answered);
+}
+
+/* ---- Reporting and moderation ------------------------------------------------ */
+
+/* Report / Hide / Restore, pushed to the right end of the post header. */
+.post-meta-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+}
+
+.link-button.quiet.danger {
+    color: var(--error);
+}
+
+.report-panel {
+    margin-top: 0.85rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+}
+
+.report-panel fieldset {
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+.report-panel legend {
+    margin-bottom: 0.5rem;
+    color: var(--text);
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.report-panel textarea {
+    resize: vertical;
+}
+
+.report-panel p {
+    margin: 0.4rem 0 0;
+}
+
+.report-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.75rem;
+}
+
+.post-reported {
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+}
+
+.post-reported p {
+    margin: 0;
+}
+
+.notice-success {
+    margin: 0 0 1rem;
+    padding: 0.6rem 0.85rem;
+    border-radius: var(--radius-sm);
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.moderation-item {
+    margin-bottom: 2rem;
+}
+
+.report-summary {
+    margin-bottom: 0.6rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--error);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+}
+
+.report-summary-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.reason-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.65rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.reason-list li {
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    background: var(--surface-sunken);
+    color: var(--text-soft);
+    font-size: 0.84rem;
+}
+
+.report-notes {
+    margin: 0.65rem 0 0;
+    padding-left: 1.1rem;
+    color: var(--text-soft);
+    font-size: 0.9rem;
+}
+
+.report-notes li + li {
+    margin-top: 0.25rem;
+}
+
+.moderation-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: -0.75rem;
+}
+
+.count-pill {
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.35rem;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--error);
+    color: var(--on-error);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+/* ---- Admin ------------------------------------------------------------------- */
+
+.admin-search {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+}
+
+.admin-users {
+    display: grid;
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-user {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    padding: 0.85rem 1.1rem;
+}
+
+.admin-user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.admin-user-info .small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.admin-user-name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.admin-user-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
 }
 
 /* ---- Response breakdown ------------------------------------------------------ */
@@ -1268,6 +1463,20 @@ input[type="checkbox"] {
 
 .button-quiet:active {
     background: var(--border);
+}
+
+.button-danger {
+    background: var(--error);
+    border-color: var(--error);
+    color: var(--on-error);
+}
+
+.button-danger:hover,
+.button-danger:active {
+    background: var(--error);
+    border-color: var(--error);
+    color: var(--on-error);
+    filter: brightness(0.92);
 }
 
 .button-small {

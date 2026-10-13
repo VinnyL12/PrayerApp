@@ -37,7 +37,7 @@ else
     <ul class="notifications">
         @foreach (var group in _groups)
         {
-            <li @key="group.PostId">
+            <li @key="(group.PostId, group.Type)">
                 <button class="card notification @(group.UnreadCount > 0 ? "unread" : "")" @onclick="() => OpenAsync(group)">
                     <span>
                         @Headline(group)
@@ -52,9 +52,10 @@ else
 </div>
 
 @code {
-    /// <summary>All notifications about one post, collapsed into a single row.</summary>
+    /// <summary>All notifications of one kind about one post, collapsed into a single row.</summary>
     private sealed record NotificationGroup(
-        int PostId, string Excerpt, int Count, int UnreadCount, DateTimeOffset Latest, IReadOnlyList<NotificationDto> Items);
+        int PostId, NotificationType Type, string Excerpt, int Count, int UnreadCount, DateTimeOffset Latest,
+        IReadOnlyList<NotificationDto> Items);
 
     private NotificationList? _list;
     private List<NotificationGroup>? _groups;
@@ -68,12 +69,14 @@ else
         _list = result.Value;
         _error = result.Error;
 
-        // Group by post (a hash-based GroupBy, O(n)), then order groups by their most
-        // recent activity so the list still reads newest-first.
+        // Group by (post, kind), a hash-based GroupBy, O(n), so "your post was hidden"
+        // never folds into a response count. Then order groups by their most recent
+        // activity so the list still reads newest-first.
         _groups = _list?.Items
-            .GroupBy(n => n.PostId)
+            .GroupBy(n => (n.PostId, n.Type))
             .Select(g => new NotificationGroup(
-                g.Key,
+                g.Key.PostId,
+                g.Key.Type,
                 g.First().PostExcerpt,
                 g.Count(),
                 g.Count(n => !n.IsRead),
@@ -85,6 +88,11 @@ else
 
     private static string Headline(NotificationGroup group)
     {
+        if (group.Type == NotificationType.PostHidden)
+        {
+            return "An admin hid your post";
+        }
+
         var count = group.UnreadCount > 0 ? group.UnreadCount : group.Count;
         var fresh = group.UnreadCount > 0 ? "new " : "";
         return count == 1 ? $"1 {fresh}response to" : $"{count} {fresh}responses to";

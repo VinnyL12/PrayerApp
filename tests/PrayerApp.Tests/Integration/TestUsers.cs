@@ -19,13 +19,13 @@ public static class TestUsers
 
     public const string Password = "CorrectHorse9";
 
-    public static async Task<TestUser> RegisterAsync(this ApiFactory factory, string displayName = "Test User")
+    public static async Task<TestUser> RegisterAsync(this ApiFactory factory, string displayName = "Test User", string? email = null)
     {
         var client = factory.CreateApiClient();
 
         var response = await client.PostAsJsonAsync("/auth/register", new RegisterRequest
         {
-            Email = $"{Guid.NewGuid():N}@example.com",
+            Email = email ?? $"{Guid.NewGuid():N}@example.com",
             Password = Password,
             DisplayName = displayName,
         }, Json);

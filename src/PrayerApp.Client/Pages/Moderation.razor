@@ -1,0 +1,137 @@
+@page "/moderation"
+@attribute [Authorize(Roles = Roles.Admin)]
+@inject PrayerApiClient Api
+@inject ModerationState State
+
+<PageTitle>Moderation · Prayer App</PageTitle>
+
+<div class="readable">
+
+<header class="page-header">
+    <h1>Moderation</h1>
+    <p class="muted">Reported posts from every community. Reporters stay anonymous, to you and to everyone else.</p>
+</header>
+
+@if (_message is not null)
+{
+    <p class="notice-success" role="status">@_message</p>
+}
+
+@if (_error is not null)
+{
+    <p class="error">@_error</p>
+}
+
+@if (_items is null)
+{
+    <p class="muted">Loading…</p>
+}
+else if (_items.Count == 0)
+{
+    <div class="card empty">
+        <p>Nothing to review. Reported posts will show up here.</p>
+    </div>
+}
+else
+{
+    @foreach (var item in _items)
+    {
+        <section class="moderation-item" @key="item.Post.Id">
+            <div class="report-summary">
+                <div class="report-summary-head">
+                    <span class="my-post-community">@item.Post.CommunityName</span>
+                    <span class="tag tag-moderation">@(item.OpenReports == 1 ? "1 report" : $"{item.OpenReports} reports")</span>
+                    <span class="muted small">
+                        @(item.Post.ModerationStatus == ModerationStatus.UnderReview
+                            ? "Hidden automatically until you decide"
+                            : "Still visible to members")
+                    </span>
+                </div>
+
+                <ul class="reason-list">
+                    @foreach (var (reason, count) in item.ByReason.OrderByDescending(r => r.Value))
+                    {
+                        <li>@reason.ToLabel()@(count > 1 ? $" ×{count}" : "")</li>
+                    }
+                </ul>
+
+                @if (item.Details.Count > 0)
+                {
+                    <ul class="report-notes">
+                        @foreach (var note in item.Details)
+                        {
+                            <li>“@note”</li>
+                        }
+                    </ul>
+                }
+            </div>
+
+            <PostCard Post="item.Post" ReadOnly="true" ShowLink="false"
+                      ImageSource="@_images.GetValueOrDefault(item.Post.Id)" />
+
+            <div class="moderation-actions">
+                <button class="button button-quiet button-small" disabled="@(_busyId == item.Post.Id)"
+                        @onclick="() => DecideAsync(item, keep: true)">Keep post</button>
+                <button class="button button-danger button-small" disabled="@(_busyId == item.Post.Id)"
+                        @onclick="() => DecideAsync(item, keep: false)">Hide post</button>
+            </div>
+        </section>
+    }
+}
+</div>
+
+@code {
+    private List<ModerationItem>? _items;
+
+    // Post id -> data: URL. Hidden posts' public image URLs are off, so admins load
+    // images through the authenticated endpoint instead.
+    private readonly Dictionary<int, string> _images = [];
+
+    private int? _busyId;
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await State.RefreshAsync();
+
+        var result = await Api.GetModerationQueueAsync();
+        _items = result.Value ?? [];
+        _error = result.Error;
+
+        // Fetch every image at once rather than one after another: total wait is the
+        // slowest download, not the sum of them (Task.WhenAll is Promise.all).
+        var withImages = _items.Where(i => i.Post.ImageId is not null).ToList();
+        var urls = await Task.WhenAll(withImages.Select(i => Api.GetModerationImageDataUrlAsync(i.Post.Id)));
+        for (var i = 0; i < withImages.Count; i++)
+        {
+            if (urls[i] is { } url)
+            {
+                _images[withImages[i].Post.Id] = url;
+            }
+        }
+    }
+
+    private async Task DecideAsync(ModerationItem item, bool keep)
+    {
+        _busyId = item.Post.Id;
+        _error = null;
+        _message = null;
+
+        var result = keep ? await Api.RestorePostAsync(item.Post.Id) : await Api.HidePostAsync(item.Post.Id);
+        if (result.Succeeded)
+        {
+            _items!.Remove(item);
+            _message = keep
+                ? "Kept. The reports were dismissed and the post is visible."
+                : "Hidden. Only the author can see it now, and they've been told.";
+            await State.RefreshAsync();
+        }
+        else
+        {
+            _error = result.Error;
+        }
+
+        _busyId = null;
+    }
+}

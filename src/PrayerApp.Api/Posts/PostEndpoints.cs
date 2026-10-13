@@ -95,6 +95,9 @@ public static class PostEndpoints
         var candidates = await db.Posts
             .Where(p => p.CommunityId == communityId
                 && p.Status != PostStatus.Archived
+                && p.ModerationStatus == ModerationStatus.Visible
+                // Once you've reported a post, you don't have to keep seeing it.
+                && !p.Reports.Any(r => r.ReporterUserId == me)
                 && p.CreatedAt <= asOf
                 && p.CreatedAt >= oldestCandidate)
             .OrderByDescending(p => p.CreatedAt)

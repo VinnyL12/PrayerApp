@@ -9,11 +9,14 @@ public static class PostQueries
 {
     /// <summary>
     /// Who can see a post: its author always; otherwise current members of its
-    /// community, unless it's archived.
+    /// community, unless it's archived or moderation has taken it out of view.
+    /// (Admins review hidden posts through the moderation queue, not here.)
     /// </summary>
     public static IQueryable<Post> VisibleTo(this IQueryable<Post> posts, Guid me) =>
         posts.Where(p => p.AuthorId == me
-            || (p.Status != PostStatus.Archived && p.Community.Memberships.Any(m => m.UserId == me)));
+            || (p.Status != PostStatus.Archived
+                && p.ModerationStatus == ModerationStatus.Visible
+                && p.Community.Memberships.Any(m => m.UserId == me)));
 
     /// <summary>
     /// Projects to the API shape. Anonymity is applied here, inside the SQL query, so
@@ -39,5 +42,7 @@ public static class PostQueries
                 .FirstOrDefault(),
             p.Link,
             // Only the id: a LEFT JOIN on the unique PostId index, never the image bytes.
-            p.Image != null ? p.Image.Id : null));
+            p.Image != null ? p.Image.Id : null,
+            p.ModerationStatus,
+            p.Reports.Any(r => r.ReporterUserId == me)));
 }

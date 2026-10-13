@@ -5,9 +5,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using PrayerApp.Api.Acknowledgments;
+using PrayerApp.Api.Admin;
 using PrayerApp.Api.Auth;
 using PrayerApp.Api.Communities;
 using PrayerApp.Api.Data;
+using PrayerApp.Api.Moderation;
 using PrayerApp.Api.Notifications;
 using PrayerApp.Api.Posts;
 using PrayerApp.Domain.Entities;
@@ -35,6 +37,7 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
 
 builder.Services.AddOptions<RankingOptions>().BindConfiguration("Ranking");
+builder.Services.AddOptions<ModerationOptions>().BindConfiguration("Moderation");
 
 // Notification pipeline: one shared queue, drained by a hosted background service that
 // starts and stops with the app.
@@ -86,7 +89,13 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
 // Secure by default: every endpoint requires a signed-in user unless it explicitly opts
 // out with AllowAnonymous(). Forgetting an attribute fails closed, not open.
 builder.Services.AddAuthorizationBuilder()
-    .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+    .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
+    // Admins only, checked against the database on each request (see AdminAuthorizationHandler).
+    .AddPolicy(Policies.Admin, policy => policy.RequireAuthenticatedUser().AddRequirements(new AdminRequirement()));
+
+builder.Services.AddOptions<AdminOptions>().BindConfiguration(AdminOptions.SectionName);
+builder.Services.AddScoped<AdminAccess>();
+builder.Services.AddScoped<IAuthorizationHandler, AdminAuthorizationHandler>();
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddScoped<RefreshTokenService>();
 
@@ -137,5 +146,7 @@ app.MapPostEndpoints();
 app.MapPostImageEndpoints();
 app.MapAcknowledgmentEndpoints();
 app.MapNotificationEndpoints();
+app.MapModerationEndpoints();
+app.MapAdminEndpoints();
 
 app.Run();

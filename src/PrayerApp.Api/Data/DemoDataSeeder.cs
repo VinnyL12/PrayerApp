@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using PrayerApp.Api.Moderation;
 using PrayerApp.Domain.Entities;
 using PrayerApp.Shared.Enums;
 
@@ -43,7 +44,12 @@ public static class DemoDataSeeder
         PostStatus Status = PostStatus.Active,
         // How many acknowledgments, and over how many hours after posting they arrived.
         int Acks = 0,
-        double AckSpreadHours = 12);
+        double AckSpreadHours = 12,
+        string? Link = null,
+        // Reports from other members; at the auto-hide threshold the post starts hidden.
+        int Reports = 0,
+        ReportReason ReportReason = ReportReason.Spam,
+        string? ReportNote = null);
 
     private sealed record Wave(
         (string Key, string DisplayName)[] Users,
@@ -285,7 +291,41 @@ public static class DemoDataSeeder
                     "One year cancer-free today. I couldn't have walked this road without the people who carried me.",
                     HoursAgo: 66, Acks: 7, AckSpreadHours: 40),
             ]),
+
+        // Wave 3: something for admins to review. One account posting scams and spam, plus
+        // one borderline post from a regular member, all reported by other members.
+        new(
+            Users:
+            [
+                ("grant", "Grant Hollis"),
+            ],
+            Memberships: new()
+            {
+                ["grant"] = ["General", "Work & Finances", "Health & Healing"],
+            },
+            Posts:
+            [
+                new("grant", "General",
+                    "Blessing circle! Send $20 to the Cash App below and receive $160 back within the week. What we give is multiplied. Only 7 spots left!",
+                    HoursAgo: 6, Link: "https://cash.app/$BlessingCircle777",
+                    Reports: 4, ReportReason: ReportReason.Scam, ReportNote: "A pyramid scheme asking people for money."),
+                new("grant", "Work & Finances",
+                    "I made $4,800 last week working from home with one simple system. Message me and I'll send you the link. First 10 people only.",
+                    HoursAgo: 10, Reports: 2, ReportReason: ReportReason.Spam, ReportNote: "Advertising, not a prayer request."),
+                new("grant", "Health & Healing",
+                    "Stop the chemo. This tea cleared my cousin's cancer in three weeks, and the doctors don't want you to know.",
+                    HoursAgo: 20, Reports: 1, ReportReason: ReportReason.Other,
+                    ReportNote: "Telling people to stop cancer treatment is dangerous."),
+                new("marcus", "General",
+                    "Honestly, some people here post the same request every single day. Maybe pray about it yourself for once.",
+                    HoursAgo: 16, Acks: 1, AckSpreadHours: 4, Reports: 1, ReportReason: ReportReason.Harassment,
+                    ReportNote: "Feels aimed at people who are struggling."),
+            ]),
     ];
+
+    // The demo user is an owner (Admin:Emails in appsettings.Development.json), so it
+    // reviews reports rather than filing them.
+    private const string DemoAdmin = "demo";
 
     /// <summary>
     /// Posts for the accounts in "Demo:PersonalAccounts". Dealt out round-robin, so with two
@@ -522,7 +562,35 @@ public static class DemoDataSeeder
 
                 // Leave the demo user's most recent few unread so the badge shows.
                 var unreadWindow = spec.Author == "demo" ? TimeSpan.FromHours(8) : TimeSpan.Zero;
-                AddPost(db, users[spec.Author], communities[spec.Community], spec, supporters, now, random, unreadWindow);
+                var post = AddPost(db, users[spec.Author], communities[spec.Community], spec, supporters, now, random, unreadWindow);
+
+                // Reporters: other members who didn't respond, and not the demo admin.
+                var reporters = members
+                    .Where(m => m.Key != spec.Author
+                        && m.Key != DemoAdmin
+                        && m.Value.Contains(spec.Community)
+                        && !supporters.Contains(users[m.Key]))
+                    .Select(m => users[m.Key])
+                    .OrderBy(_ => random.Next())
+                    .Take(spec.Reports)
+                    .ToList();
+
+                for (var i = 0; i < reporters.Count; i++)
+                {
+                    post.Reports.Add(new Report
+                    {
+                        ReporterUserId = reporters[i].Id,
+                        Reason = spec.ReportReason,
+                        Details = i == 0 ? spec.ReportNote : null,
+                        CreatedAt = post.CreatedAt.AddHours(spec.HoursAgo * (i + 1) / (reporters.Count + 2)),
+                    });
+                }
+
+                // As if the API's auto-hide had run when the last report arrived.
+                if (reporters.Count >= ModerationOptions.DefaultAutoHideThreshold)
+                {
+                    post.ModerationStatus = ModerationStatus.UnderReview;
+                }
             }
 
             await db.SaveChangesAsync(ct);
@@ -608,6 +676,8 @@ public static class DemoDataSeeder
                 .Include(p => p.Community)
                 .Where(p => p.AuthorId != me.Id
                     && p.Status != PostStatus.Archived
+                    && p.ModerationStatus == ModerationStatus.Visible
+                    && !p.Reports.Any(r => r.ReporterUserId == me.Id)
                     && communityIds.Contains(p.CommunityId)
                     && p.CreatedAt > now.AddDays(-30)
                     && !p.Acknowledgments.Any(a => a.UserId == me.Id))
@@ -630,7 +700,7 @@ public static class DemoDataSeeder
         }
     }
 
-    private static void AddPost(
+    private static Post AddPost(
         AppDbContext db,
         User author,
         Community community,
@@ -650,6 +720,7 @@ public static class DemoDataSeeder
             IsUrgent = spec.Urgent,
             IsAnonymous = spec.Anonymous,
             Status = spec.Status,
+            Link = spec.Link,
             CreatedAt = createdAt,
             // Kept equal to the number of Acknowledgment rows, as the API guarantees.
             AcknowledgmentCount = supporters.Count,
@@ -666,6 +737,8 @@ public static class DemoDataSeeder
             AddAcknowledgment(db, post, author.Id, supporters[i].Id, allowed[random.Next(allowed.Count)], ackedAt,
                 isRead: ackedAt < now - unreadWindow);
         }
+
+        return post;
     }
 
     /// <summary>An acknowledgment plus the notification the pipeline would have written for it.</summary>

@@ -18,7 +18,8 @@ namespace PrayerApp.Api.Posts;
 /// lives in the client's memory. So the URL itself is the permission (a "capability URL"):
 /// /images/{random GUID}, only ever handed out inside a PostDto to people who can see the
 /// post. Like a signed S3 link, someone who can see the image could share the URL, but no
-/// one can guess one. Archiving the post turns the URL off.
+/// one can guess one. Archiving or hiding the post turns the URL off. Admins reviewing
+/// a hidden post load its image through the moderation endpoints instead.
 /// </summary>
 public static class PostImageEndpoints
 {
@@ -113,7 +114,9 @@ public static class PostImageEndpoints
         Guid id, AppDbContext db, HttpContext context, CancellationToken ct)
     {
         var image = await db.PostImages
-            .Where(i => i.Id == id && i.Post.Status != PostStatus.Archived)
+            .Where(i => i.Id == id
+                && i.Post.Status != PostStatus.Archived
+                && i.Post.ModerationStatus == ModerationStatus.Visible)
             .Select(i => new { i.ContentType, i.Data })
             .SingleOrDefaultAsync(ct);
 

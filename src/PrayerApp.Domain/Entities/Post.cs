@@ -16,6 +16,9 @@ public class Post
 
     public PostStatus Status { get; set; } = PostStatus.Active;
 
+    // Moderation is a separate axis from Status, which belongs to the author.
+    public ModerationStatus ModerationStatus { get; set; } = ModerationStatus.Visible;
+
     public bool IsUrgent { get; set; }
 
     public bool IsAnonymous { get; set; }
@@ -36,4 +39,6 @@ public class Post
     public PostImage? Image { get; set; }
 
     public ICollection<Acknowledgment> Acknowledgments { get; } = [];
+
+    public ICollection<Report> Reports { get; } = [];
 }

@@ -1,6 +1,8 @@
 using System.Net.Http.Json;
 using PrayerApp.Shared.Contracts.Acknowledgments;
+using PrayerApp.Shared.Contracts.Admin;
 using PrayerApp.Shared.Contracts.Communities;
+using PrayerApp.Shared.Contracts.Moderation;
 using PrayerApp.Shared.Contracts.Notifications;
 using PrayerApp.Shared.Contracts.Posts;
 using PrayerApp.Shared.Enums;
@@ -86,6 +88,58 @@ public sealed class PrayerApiClient(HttpClient http)
 
     public Task<ApiResult> MarkAllNotificationsReadAsync() =>
         SendAsync(HttpMethod.Post, "/me/notifications/read-all");
+
+    // Moderation
+
+    public Task<ApiResult> ReportPostAsync(int postId, ReportReason reason, string? details) =>
+        SendAsync(HttpMethod.Post, $"/posts/{postId}/reports", new ReportRequest { Reason = reason, Details = details });
+
+    public Task<ApiResult<ModerationSummary>> GetModerationSummaryAsync() =>
+        GetAsync<ModerationSummary>("/moderation/summary");
+
+    public Task<ApiResult<List<ModerationItem>>> GetModerationQueueAsync() =>
+        GetAsync<List<ModerationItem>>("/moderation/queue");
+
+    public Task<ApiResult<PostDto>> HidePostAsync(int postId) =>
+        SendAsync<PostDto>(HttpMethod.Post, $"/moderation/posts/{postId}/hide");
+
+    public Task<ApiResult<PostDto>> RestorePostAsync(int postId) =>
+        SendAsync<PostDto>(HttpMethod.Post, $"/moderation/posts/{postId}/restore");
+
+    /// <summary>
+    /// A hidden post's image for an admin, as a data: URL. Its public URL is off, so this
+    /// goes through HttpClient (with the bearer token) instead of a plain &lt;img src&gt;.
+    /// </summary>
+    public async Task<string?> GetModerationImageDataUrlAsync(int postId)
+    {
+        try
+        {
+            using var response = await http.GetAsync($"/moderation/posts/{postId}/image");
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var type = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
+            return $"data:{type};base64,{Convert.ToBase64String(await response.Content.ReadAsByteArrayAsync())}";
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+    }
+
+    // Admin
+
+    public Task<ApiResult<List<AdminUserDto>>> GetAdminUsersAsync(string? search) =>
+        GetAsync<List<AdminUserDto>>("/admin/users"
+            + (string.IsNullOrWhiteSpace(search) ? "" : $"?search={Uri.EscapeDataString(search.Trim())}"));
+
+    public Task<ApiResult> PromoteToAdminAsync(Guid userId) =>
+        SendAsync(HttpMethod.Put, $"/admin/users/{userId}/admin");
+
+    public Task<ApiResult> RemoveAdminAsync(Guid userId) =>
+        SendAsync(HttpMethod.Delete, $"/admin/users/{userId}/admin");
 
     // Plumbing
 

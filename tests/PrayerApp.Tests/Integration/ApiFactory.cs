@@ -1,8 +1,10 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using PrayerApp.Api.Admin;
 using PrayerApp.Api.Data;
 using PrayerApp.Domain.Entities;
 using PrayerApp.Shared.Enums;
@@ -26,6 +28,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Default", _sql.GetConnectionString());
         builder.UseSetting("Jwt:SigningKey", Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)));
+        builder.UseSetting("Admin:Emails:0", OwnerEmail);
     }
 
     public async Task InitializeAsync()
@@ -51,6 +54,22 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             BaseAddress = new Uri("https://localhost"),
             HandleCookies = false,
         });
+
+    /// <summary>Configured as an owner (Admin:Emails), the way a real deployment bootstraps its first admin.</summary>
+    public const string OwnerEmail = "owner@prayerapp.test";
+
+    /// <summary>
+    /// Makes a user an admin directly in the database, like a promotion by another admin.
+    /// No new token needed: the Admin policy checks the database on every request.
+    /// </summary>
+    public async Task MakeAdminAsync(Guid userId)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        db.UserRoles.Add(new IdentityUserRole<Guid> { UserId = userId, RoleId = AdminRole.Id });
+        await db.SaveChangesAsync();
+    }
 
     /// <summary>A fresh, empty community, for tests that need a predictable feed or member count.</summary>
     public async Task<int> CreateCommunityAsync(CommunityCategory category = CommunityCategory.General)

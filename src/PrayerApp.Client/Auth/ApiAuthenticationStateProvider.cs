@@ -41,13 +41,22 @@ public sealed class ApiAuthenticationStateProvider : AuthenticationStateProvider
             return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
         }
 
-        // Passing an authenticationType is what makes IsAuthenticated true.
-        var identity = new ClaimsIdentity(
+        List<Claim> claims =
         [
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Name, user.DisplayName),
             new Claim(ClaimTypes.Email, user.Email),
-        ], authenticationType: "PrayerApp");
+        ];
+
+        // Makes User.IsInRole("Admin"), <AuthorizeView Roles="Admin"> and
+        // [Authorize(Roles = "Admin")] work. UI only: the API makes its own decision.
+        if (user.IsAdmin)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, Roles.Admin));
+        }
+
+        // Passing an authenticationType is what makes IsAuthenticated true.
+        var identity = new ClaimsIdentity(claims, authenticationType: "PrayerApp");
 
         return new AuthenticationState(new ClaimsPrincipal(identity));
     }

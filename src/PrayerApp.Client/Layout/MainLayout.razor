@@ -20,6 +20,11 @@
                 <nav class="nav" aria-label="Main">
                     <NavLink href="/communities">Communities</NavLink>
                     <NavLink href="/me/posts">My posts</NavLink>
+                    @* Nested AuthorizeView needs its own Context name: the outer one already uses "context". *@
+                    <AuthorizeView Roles="@Roles.Admin" Context="admin">
+                        <ModerationLink />
+                        <NavLink href="/admin">Admin</NavLink>
+                    </AuthorizeView>
                     <NotificationBell />
                 </nav>
                 <div class="account">

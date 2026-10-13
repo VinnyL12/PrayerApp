@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.JsonWebTokens;
+using PrayerApp.Api.Admin;
 using PrayerApp.Domain.Entities;
 using PrayerApp.Shared.Contracts.Auth;
 
@@ -30,6 +31,7 @@ public static class AuthEndpoints
         UserManager<User> users,
         TokenService tokens,
         RefreshTokenService refreshTokens,
+        AdminAccess admins,
         TimeProvider time,
         HttpContext http,
         CancellationToken ct)
@@ -52,7 +54,7 @@ public static class AuthEndpoints
             return TypedResults.ValidationProblem(errors);
         }
 
-        return TypedResults.Ok(await SignInAsync(user, tokens, refreshTokens, http, ct));
+        return TypedResults.Ok(await SignInAsync(user, tokens, refreshTokens, admins, http, ct));
     }
 
     private static async Task<Results<Ok<AuthResponse>, ProblemHttpResult>> Login(
@@ -60,6 +62,7 @@ public static class AuthEndpoints
         UserManager<User> users,
         TokenService tokens,
         RefreshTokenService refreshTokens,
+        AdminAccess admins,
         HttpContext http,
         CancellationToken ct)
     {
@@ -81,12 +84,13 @@ public static class AuthEndpoints
         }
 
         await users.ResetAccessFailedCountAsync(user);
-        return TypedResults.Ok(await SignInAsync(user, tokens, refreshTokens, http, ct));
+        return TypedResults.Ok(await SignInAsync(user, tokens, refreshTokens, admins, http, ct));
     }
 
     private static async Task<Results<Ok<AuthResponse>, UnauthorizedHttpResult>> Refresh(
         TokenService tokens,
         RefreshTokenService refreshTokens,
+        AdminAccess admins,
         HttpContext http,
         CancellationToken ct)
     {
@@ -103,7 +107,10 @@ public static class AuthEndpoints
         }
 
         SetRefreshCookie(http, rotation.RefreshToken);
-        return TypedResults.Ok(CreateResponse(rotation.User, tokens.CreateAccessToken(rotation.User)));
+
+        // Re-read on every refresh, so a promotion or demotion reaches the UI within one
+        // access-token lifetime without signing out.
+        return TypedResults.Ok(await CreateResponseAsync(rotation.User, tokens.CreateAccessToken(rotation.User), admins, ct));
     }
 
     private static async Task<NoContent> Logout(RefreshTokenService refreshTokens, HttpContext http, CancellationToken ct)
@@ -119,28 +126,33 @@ public static class AuthEndpoints
 
     private static async Task<Results<Ok<UserDto>, UnauthorizedHttpResult>> Me(
         ClaimsPrincipal principal,
-        UserManager<User> users)
+        UserManager<User> users,
+        AdminAccess admins,
+        CancellationToken ct)
     {
         var userId = principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
         var user = userId is null ? null : await users.FindByIdAsync(userId);
 
         return user is null
             ? TypedResults.Unauthorized()
-            : TypedResults.Ok(ToDto(user));
+            : TypedResults.Ok(await ToDtoAsync(user, admins, ct));
     }
 
     private static async Task<AuthResponse> SignInAsync(
-        User user, TokenService tokens, RefreshTokenService refreshTokens, HttpContext http, CancellationToken ct)
+        User user, TokenService tokens, RefreshTokenService refreshTokens, AdminAccess admins, HttpContext http, CancellationToken ct)
     {
         var refresh = await refreshTokens.IssueAsync(user.Id, ct);
         SetRefreshCookie(http, refresh);
-        return CreateResponse(user, tokens.CreateAccessToken(user));
+        return await CreateResponseAsync(user, tokens.CreateAccessToken(user), admins, ct);
     }
 
-    private static AuthResponse CreateResponse(User user, AccessToken access) =>
-        new(access.Token, access.ExpiresAt, ToDto(user));
+    private static async Task<AuthResponse> CreateResponseAsync(User user, AccessToken access, AdminAccess admins, CancellationToken ct) =>
+        new(access.Token, access.ExpiresAt, await ToDtoAsync(user, admins, ct));
 
-    private static UserDto ToDto(User user) => new(user.Id, user.Email!, user.DisplayName);
+    // The role is deliberately not a claim in the access token: the API checks it fresh
+    // per admin request. This flag only tells the client which links to show.
+    private static async Task<UserDto> ToDtoAsync(User user, AdminAccess admins, CancellationToken ct) =>
+        new(user.Id, user.Email!, user.DisplayName, await admins.IsAdminAsync(user.Id, ct));
 
     private static void SetRefreshCookie(HttpContext http, IssuedRefreshToken refresh) =>
         http.Response.Cookies.Append(RefreshCookieName, refresh.Token, CreateCookieOptions(refresh.ExpiresAt));

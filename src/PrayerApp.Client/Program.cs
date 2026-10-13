@@ -39,5 +39,6 @@ builder.Services.AddHttpClient<PrayerApiClient>(client => client.BaseAddress = a
     .AddHttpMessageHandler<BearerTokenHandler>();
 
 builder.Services.AddScoped<NotificationState>();
+builder.Services.AddScoped<ModerationState>();
 
 await builder.Build().RunAsync();

@@ -67,6 +67,14 @@ else
                         {
                             <span class="tag">Anonymous</span>
                         }
+                        @if (post.ModerationStatus == ModerationStatus.UnderReview)
+                        {
+                            <span class="tag tag-moderation" title="Hidden after several reports, until an admin reviews it">Under review</span>
+                        }
+                        @if (post.ModerationStatus == ModerationStatus.Hidden)
+                        {
+                            <span class="tag tag-moderation" title="Only you can see it">Hidden by admins</span>
+                        }
                     </div>
 
                     <a class="my-post-body" href="/posts/@post.Id">@post.Body</a>

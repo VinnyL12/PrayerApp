@@ -33,4 +33,5 @@ public sealed record LoginRequest
 /// </summary>
 public sealed record AuthResponse(string AccessToken, DateTimeOffset ExpiresAt, UserDto User);
 
-public sealed record UserDto(Guid Id, string Email, string DisplayName);
+/// <param name="IsAdmin">For the UI only (showing admin links). The API checks the database on every admin request.</param>
+public sealed record UserDto(Guid Id, string Email, string DisplayName, bool IsAdmin);

@@ -1,0 +1,48 @@
+@implements IDisposable
+@inject ModerationState Moderation
+
+@* Rendered only for admins (MainLayout wraps it in an AuthorizeView), so it can poll freely. *@
+<NavLink href="/moderation">
+    Moderation
+    @if (Moderation.Summary.OpenCount > 0)
+    {
+        <span class="count-pill" aria-label="@($"{Moderation.Summary.OpenCount} waiting")">@Moderation.Summary.OpenCount</span>
+    }
+</NavLink>
+
+@code {
+    // Slower than the bell: reports are rarer than responses, and a minute's delay is fine.
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(60);
+    private readonly CancellationTokenSource _stop = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Moderation.Changed += OnChanged;
+        await Moderation.RefreshAsync();
+        _ = PollAsync();
+    }
+
+    private async Task PollAsync()
+    {
+        using var timer = new PeriodicTimer(PollInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_stop.Token))
+            {
+                await Moderation.RefreshAsync();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Moderation.Changed -= OnChanged;
+        _stop.Cancel();
+        _stop.Dispose();
+    }
+}

@@ -1,99 +1,169 @@
 @inject PrayerApiClient Api
 @inject TimeProvider Time
 
-<article class="card post @(ShowUrgent ? "post-urgent" : "")">
-    <header class="post-meta">
-        <span class="author">@AuthorLabel</span>
-        <span class="muted">· @TimeFormat.Ago(Post.CreatedAt, Time.GetUtcNow())</span>
-        @if (ShowUrgent)
-        {
-            <span class="tag tag-urgent">Urgent</span>
-        }
-        @if (Post.Status == PostStatus.Answered)
-        {
-            <span class="tag tag-answered">Answered</span>
-        }
-        @if (Post.Status == PostStatus.Archived)
-        {
-            <span class="tag">Archived</span>
-        }
-    </header>
-
-    @if (ShowLink)
-    {
-        <a class="post-body post-link" href="/posts/@Post.Id">@Post.Body</a>
-    }
-    else
-    {
-        <p class="post-body">@Post.Body</p>
-    }
-
-    @* The API turns an archived post's image URL off, so don't render a broken image. *@
-    @if (Post.ImageId is { } imageId && Post.Status != PostStatus.Archived)
-    {
-        <img class="post-image @(ShowLink ? "" : "post-image-full")" src="@Api.ImageUrl(imageId)"
-             alt="Photo shared with this post" loading="lazy" />
-    }
-
-    @if (Post.Link is { } link)
-    {
-        @* noopener: the new tab can't script this one. noreferrer: the site doesn't learn
-           which post sent the reader. nofollow ugc: user content, not an endorsement. *@
-        <a class="post-link-card" href="@link" target="_blank" rel="noopener noreferrer nofollow ugc">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" /><path d="M14 10a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" /></svg>
-            <span class="post-link-text">
-                <span class="post-link-title">@PostLinks.Title(link)</span>
-                <span class="muted small">@PostLinks.Host(link)</span>
-            </span>
-            <span class="visually-hidden">(opens in a new tab)</span>
-        </a>
-    }
-
-    <footer class="post-footer">
-        <span class="muted">@ResponseCount</span>
-
-        @if (Post.IsMine)
-        {
-            <span class="muted small">Your post</span>
-        }
-        else if (Post.MyAcknowledgment is { } mine)
-        {
-            if (_changing)
+@if (Post.ReportedByMe && !ReadOnly)
+{
+    <article class="card post post-reported">
+        <p class="muted small">You reported this post, so it's hidden for you. Thanks for looking out for this community; an admin will take a look.</p>
+    </article>
+}
+else
+{
+    <article class="card post @(ShowUrgent ? "post-urgent" : "")">
+        <header class="post-meta">
+            <span class="author">@AuthorLabel</span>
+            <span class="muted">· @TimeFormat.Ago(Post.CreatedAt, Time.GetUtcNow())</span>
+            @if (ShowUrgent)
             {
-                <div class="ack-picker" role="group" aria-label="Change your response">
-                    @foreach (var type in AcknowledgmentPolicy.AllowedFor(Post.CommunityCategory, Post.Status))
+                <span class="tag tag-urgent">Urgent</span>
+            }
+            @if (Post.Status == PostStatus.Answered)
+            {
+                <span class="tag tag-answered">Answered</span>
+            }
+            @if (Post.Status == PostStatus.Archived)
+            {
+                <span class="tag">Archived</span>
+            }
+            @if (Post.ModerationStatus == ModerationStatus.UnderReview)
+            {
+                <span class="tag tag-moderation" title="Hidden after several reports, until an admin reviews it">Under review</span>
+            }
+            @if (Post.ModerationStatus == ModerationStatus.Hidden)
+            {
+                <span class="tag tag-moderation" title="Only you can see it">Hidden by admins</span>
+            }
+
+            @if (!ReadOnly && !Post.IsMine)
+            {
+                <span class="post-meta-actions">
+                    @if (_confirmHide)
                     {
-                        <button class="chip @(type == mine ? "chip-selected" : "")" disabled="@(_busy || type == mine)"
-                                aria-pressed="@(type == mine)" @onclick="() => ChangeAsync(type)">@type.ToLabel()</button>
+                        <span class="small">Hide from everyone?</span>
+                        <button class="link-button quiet danger" disabled="@_busy" @onclick="HideAsync">Hide</button>
+                        <button class="link-button quiet" disabled="@_busy" @onclick="() => _confirmHide = false">Cancel</button>
                     }
-                    <button class="link-button quiet" disabled="@_busy" @onclick="() => _changing = false">Cancel</button>
-                </div>
+                    else if (_isAdmin && Post.ModerationStatus != ModerationStatus.Visible)
+                    {
+                        <button class="link-button quiet" disabled="@_busy" @onclick="RestoreAsync">Restore</button>
+                    }
+                    else if (Post.ModerationStatus == ModerationStatus.Visible)
+                    {
+                        if (_isAdmin)
+                        {
+                            <button class="link-button quiet" disabled="@_busy" @onclick="() => _confirmHide = true">Hide</button>
+                        }
+                        if (!_reporting)
+                        {
+                            <button class="link-button quiet" disabled="@_busy" @onclick="() => _reporting = true">Report</button>
+                        }
+                    }
+                </span>
             }
-            else
-            {
-                <div class="ack-actions">
-                    <span class="acknowledged"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>@mine.ToLabel()</span>
-                    <button class="link-button quiet" disabled="@_busy" @onclick="() => _changing = true">Change</button>
-                    <button class="link-button quiet" disabled="@_busy" @onclick="RemoveAsync">Remove</button>
-                </div>
-            }
-        }
-        else if (Post.Status != PostStatus.Archived)
-        {
-            <div class="ack-picker" role="group" aria-label="Respond to this post">
-                @foreach (var type in AcknowledgmentPolicy.AllowedFor(Post.CommunityCategory, Post.Status))
-                {
-                    <button class="chip" disabled="@_busy" @onclick="() => AcknowledgeAsync(type)">@type.ToLabel()</button>
-                }
-            </div>
-        }
-    </footer>
+        </header>
 
-    @if (_error is not null)
-    {
-        <p class="error small">@_error</p>
-    }
-</article>
+        @if (ShowLink)
+        {
+            <a class="post-body post-link" href="/posts/@Post.Id">@Post.Body</a>
+        }
+        else
+        {
+            <p class="post-body">@Post.Body</p>
+        }
+
+        @if (ImageSrc is { } src)
+        {
+            <img class="post-image @(ShowLink ? "" : "post-image-full")" src="@src"
+                 alt="Photo shared with this post" loading="lazy" />
+        }
+
+        @if (Post.Link is { } link)
+        {
+            @* noopener: the new tab can't script this one. noreferrer: the site doesn't learn
+               which post sent the reader. nofollow ugc: user content, not an endorsement. *@
+            <a class="post-link-card" href="@link" target="_blank" rel="noopener noreferrer nofollow ugc">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" /><path d="M14 10a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" /></svg>
+                <span class="post-link-text">
+                    <span class="post-link-title">@PostLinks.Title(link)</span>
+                    <span class="muted small">@PostLinks.Host(link)</span>
+                </span>
+                <span class="visually-hidden">(opens in a new tab)</span>
+            </a>
+        }
+
+        @if (_reporting)
+        {
+            <form class="report-panel" @onsubmit="SubmitReportAsync" @onsubmit:preventDefault>
+                <fieldset>
+                    <legend>What's wrong with this post?</legend>
+                    <div class="ack-picker">
+                        @foreach (var reason in Enum.GetValues<ReportReason>())
+                        {
+                            <button type="button" class="chip @(reason == _reason ? "chip-selected" : "")"
+                                    aria-pressed="@(reason == _reason)" @onclick="() => _reason = reason">@reason.ToLabel()</button>
+                        }
+                    </div>
+                </fieldset>
+                <label for="report-details-@Post.Id">Anything admins should know? <span class="muted">(optional)</span></label>
+                <textarea id="report-details-@Post.Id" class="input" rows="2" maxlength="500" @bind="_details"></textarea>
+                <p class="muted small">Admins see your reason and note, never your name. The post will be hidden for you.</p>
+                <div class="report-actions">
+                    <button type="button" class="link-button quiet" disabled="@_busy" @onclick="CancelReport">Cancel</button>
+                    <button type="submit" class="button button-small" disabled="@(_busy || _reason is null)">Report post</button>
+                </div>
+            </form>
+        }
+
+        <footer class="post-footer">
+            <span class="muted">@ResponseCount</span>
+
+            @* A read-only view (the moderation queue) shows the count and nothing to click. *@
+            @if (!ReadOnly)
+            {
+                if (Post.IsMine)
+                {
+                    <span class="muted small">Your post</span>
+                }
+                else if (Post.MyAcknowledgment is { } mine)
+                {
+                    if (_changing)
+                    {
+                        <div class="ack-picker" role="group" aria-label="Change your response">
+                            @foreach (var type in AcknowledgmentPolicy.AllowedFor(Post.CommunityCategory, Post.Status))
+                            {
+                                <button class="chip @(type == mine ? "chip-selected" : "")" disabled="@(_busy || type == mine)"
+                                        aria-pressed="@(type == mine)" @onclick="() => ChangeAsync(type)">@type.ToLabel()</button>
+                            }
+                            <button class="link-button quiet" disabled="@_busy" @onclick="() => _changing = false">Cancel</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="ack-actions">
+                            <span class="acknowledged"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>@mine.ToLabel()</span>
+                            <button class="link-button quiet" disabled="@_busy" @onclick="() => _changing = true">Change</button>
+                            <button class="link-button quiet" disabled="@_busy" @onclick="RemoveAsync">Remove</button>
+                        </div>
+                    }
+                }
+                else if (Post.Status != PostStatus.Archived)
+                {
+                    <div class="ack-picker" role="group" aria-label="Respond to this post">
+                        @foreach (var type in AcknowledgmentPolicy.AllowedFor(Post.CommunityCategory, Post.Status))
+                        {
+                            <button class="chip" disabled="@_busy" @onclick="() => AcknowledgeAsync(type)">@type.ToLabel()</button>
+                        }
+                    </div>
+                }
+            }
+        </footer>
+
+        @if (_error is not null)
+        {
+            <p class="error small">@_error</p>
+        }
+    </article>
+}
 
 @code {
     // [Parameter] is a prop. EventCallback is a callback prop (onChange={...}).
@@ -101,12 +171,40 @@
     [Parameter] public EventCallback<PostDto> PostChanged { get; set; }
     [Parameter] public bool ShowLink { get; set; } = true;
 
+    /// <summary>Show the post without any actions, as in the moderation queue.</summary>
+    [Parameter] public bool ReadOnly { get; set; }
+
+    // Provided by AddCascadingAuthenticationState in Program.cs, like reading a React context.
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    // Decides whether to offer Hide/Restore. The API enforces the real rule.
+    private bool _isAdmin;
+
+    /// <summary>Overrides the image URL, e.g. a data: URL an admin loaded for a hidden post.</summary>
+    [Parameter] public string? ImageSource { get; set; }
+
     private bool _busy;
     private bool _changing;
+    private bool _reporting;
+    private bool _confirmHide;
+    private ReportReason? _reason;
+    private string? _details;
     private string? _error;
+
+    // The public image URL is off for archived and hidden posts, so don't render a broken image.
+    private string? ImageSrc => ImageSource
+        ?? (Post.ImageId is { } id && Post.Status != PostStatus.Archived && Post.ModerationStatus == ModerationStatus.Visible
+            ? Api.ImageUrl(id)
+            : null);
 
     // Urgency is about the wait. Once a post is answered (or archived) it's over.
     private bool ShowUrgent => Post.IsUrgent && Post.Status == PostStatus.Active;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isAdmin = AuthenticationState is not null
+            && (await AuthenticationState).User.IsInRole(Roles.Admin);
+    }
 
     private string AuthorLabel => (Post.IsMine, Post.IsAnonymous) switch
     {
@@ -183,6 +281,62 @@
                 AcknowledgmentCount = result.Value!.AcknowledgmentCount,
                 MyAcknowledgment = null,
             });
+        }
+        else
+        {
+            _error = result.Error;
+        }
+
+        _busy = false;
+    }
+
+    private void CancelReport()
+    {
+        _reporting = false;
+        _reason = null;
+        _details = null;
+    }
+
+    private async Task SubmitReportAsync()
+    {
+        if (_reason is not { } reason)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+
+        var result = await Api.ReportPostAsync(Post.Id, reason, string.IsNullOrWhiteSpace(_details) ? null : _details.Trim());
+        if (result.Succeeded)
+        {
+            CancelReport();
+            await PostChanged.InvokeAsync(Post with { ReportedByMe = true });
+        }
+        else
+        {
+            _error = result.Error;
+        }
+
+        _busy = false;
+    }
+
+    private Task HideAsync() => ModerateAsync(Api.HidePostAsync);
+
+    private Task RestoreAsync() => ModerateAsync(Api.RestorePostAsync);
+
+    // Hide and restore differ only in which endpoint they call, so pass the call in
+    // (a function as a parameter, like passing a callback in JS).
+    private async Task ModerateAsync(Func<int, Task<ApiResult<PostDto>>> action)
+    {
+        _busy = true;
+        _error = null;
+
+        var result = await action(Post.Id);
+        if (result.Succeeded)
+        {
+            _confirmHide = false;
+            await PostChanged.InvokeAsync(result.Value!);
         }
         else
         {

@@ -48,6 +48,15 @@ namespace PrayerApp.Api.Data.Migrations
                         .HasFilter("[NormalizedName] IS NOT NULL");
 
                     b.ToTable("AspNetRoles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("6c1d3b2a-9f4e-4a8b-b5d1-2e7f0a9c4d11"),
+                            ConcurrencyStamp = "b0f7c2de-3a51-4c8e-9d62-7a1e5f4b8c30",
+                            Name = "Admin",
+                            NormalizedName = "ADMIN"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -286,9 +295,6 @@ namespace PrayerApp.Api.Data.Migrations
                     b.Property<DateTimeOffset>("JoinedAt")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<int>("Role")
-                        .HasColumnType("int");
-
                     b.HasKey("UserId", "CommunityId");
 
                     b.HasIndex("CommunityId");
@@ -368,6 +374,9 @@ namespace PrayerApp.Api.Data.Migrations
                     b.Property<string>("Link")
                         .HasMaxLength(2048)
                         .HasColumnType("nvarchar(2048)");
+
+                    b.Property<int>("ModerationStatus")
+                        .HasColumnType("int");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -456,6 +465,55 @@ namespace PrayerApp.Api.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("PrayerApp.Domain.Entities.Report", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("PostId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Reason")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ReporterUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("Resolution")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId")
+                        .HasDatabaseName("IX_Reports_PostId_Open")
+                        .HasFilter("[ResolvedAt] IS NULL");
+
+                    b.HasIndex("ReporterUserId");
+
+                    b.HasIndex("ResolvedByUserId");
+
+                    b.HasIndex("PostId", "ReporterUserId")
+                        .IsUnique();
+
+                    b.ToTable("Reports");
                 });
 
             modelBuilder.Entity("PrayerApp.Domain.Entities.User", b =>
@@ -689,6 +747,32 @@ namespace PrayerApp.Api.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("PrayerApp.Domain.Entities.Report", b =>
+                {
+                    b.HasOne("PrayerApp.Domain.Entities.Post", "Post")
+                        .WithMany("Reports")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PrayerApp.Domain.Entities.User", "Reporter")
+                        .WithMany()
+                        .HasForeignKey("ReporterUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PrayerApp.Domain.Entities.User", "ResolvedBy")
+                        .WithMany()
+                        .HasForeignKey("ResolvedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Post");
+
+                    b.Navigation("Reporter");
+
+                    b.Navigation("ResolvedBy");
+                });
+
             modelBuilder.Entity("PrayerApp.Domain.Entities.Community", b =>
                 {
                     b.Navigation("Memberships");
@@ -701,6 +785,8 @@ namespace PrayerApp.Api.Data.Migrations
                     b.Navigation("Acknowledgments");
 
                     b.Navigation("Image");
+
+                    b.Navigation("Reports");
                 });
 
             modelBuilder.Entity("PrayerApp.Domain.Entities.User", b =>

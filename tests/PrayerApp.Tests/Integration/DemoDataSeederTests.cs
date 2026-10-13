@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PrayerApp.Api.Data;
+using PrayerApp.Shared.Enums;
 
 namespace PrayerApp.Tests.Integration;
 
@@ -32,6 +33,12 @@ public class DemoDataSeederTests(ApiFactory factory)
         // Nobody acknowledged their own post, and no acknowledgment predates its post.
         Assert.False(await db.Acknowledgments.AnyAsync(a => a.UserId == a.Post.AuthorId));
         Assert.False(await db.Acknowledgments.AnyAsync(a => a.CreatedAt < a.Post.CreatedAt));
+
+        // Moderators have something to review: one post already auto-hidden, more reported.
+        Assert.True(await db.Posts.AnyAsync(p => p.ModerationStatus == ModerationStatus.UnderReview));
+        Assert.True(await db.Reports.CountAsync(r => r.ResolvedAt == null) >= 4);
+        Assert.False(await db.Reports.AnyAsync(r => r.ReporterUserId == r.Post.AuthorId));
+        Assert.False(await db.Reports.AnyAsync(r => r.Reporter.Email == DemoDataSeeder.DemoEmail));
     }
 
     [Fact]

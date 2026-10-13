@@ -1,0 +1,154 @@
+@page "/admin"
+@attribute [Authorize(Roles = Roles.Admin)]
+@using System.Security.Claims
+@inject PrayerApiClient Api
+
+<PageTitle>Admin · Prayer App</PageTitle>
+
+<div class="readable">
+
+<header class="page-header">
+    <h1>Admin</h1>
+    <p class="muted">Admins can review reports and hide posts in every community, and manage who else is an admin.</p>
+</header>
+
+<form class="admin-search" @onsubmit="LoadAsync" @onsubmit:preventDefault>
+    <label class="visually-hidden" for="admin-search">Search people</label>
+    <input id="admin-search" class="input" type="search" placeholder="Search by name or email" @bind="_search" />
+    <button type="submit" class="button button-quiet">Search</button>
+</form>
+
+@if (_message is not null)
+{
+    <p class="notice-success" role="status">@_message</p>
+}
+
+@if (_error is not null)
+{
+    <p class="error">@_error</p>
+}
+
+@if (_users is null)
+{
+    <p class="muted">Loading…</p>
+}
+else if (_users.Count == 0)
+{
+    <div class="card empty">
+        <p>No one matches that search.</p>
+    </div>
+}
+else
+{
+    <ul class="admin-users">
+        @foreach (var user in _users)
+        {
+            <li @key="user.Id" class="card admin-user">
+                <div class="admin-user-info">
+                    <span class="avatar" aria-hidden="true">@Initials(user.DisplayName)</span>
+                    <div>
+                        <div class="admin-user-name">
+                            @user.DisplayName
+                            @if (user.Id == _me)
+                            {
+                                <span class="tag">You</span>
+                            }
+                            @if (user.IsOwner)
+                            {
+                                <span class="tag tag-admin" title="Set in the app's configuration">Owner</span>
+                            }
+                            else if (user.IsAdmin)
+                            {
+                                <span class="tag tag-admin">Admin</span>
+                            }
+                        </div>
+                        <div class="muted small">@user.Email</div>
+                    </div>
+                </div>
+
+                <div class="admin-user-actions">
+                    @if (_confirmId == user.Id)
+                    {
+                        <span class="small">@(user.IsAdmin ? "Remove their admin access?" : "Let them moderate everything and manage admins?")</span>
+                        <button class="link-button quiet" disabled="@_busy" @onclick="() => _confirmId = null">Cancel</button>
+                        <button class="button button-small @(user.IsAdmin ? "button-danger" : "")" disabled="@_busy"
+                                @onclick="() => ChangeAsync(user)">@(user.IsAdmin ? "Remove" : "Make admin")</button>
+                    }
+                    else if (user.IsOwner)
+                    {
+                        <span class="muted small">Always an admin</span>
+                    }
+                    else if (user.Id == _me)
+                    {
+                        <span class="muted small">Another admin can change this</span>
+                    }
+                    else
+                    {
+                        <button class="button button-small @(user.IsAdmin ? "button-quiet" : "")" disabled="@_busy"
+                                @onclick="() => _confirmId = user.Id">@(user.IsAdmin ? "Remove admin" : "Make admin")</button>
+                    }
+                </div>
+            </li>
+        }
+    </ul>
+}
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private List<AdminUserDto>? _users;
+    private string? _search;
+    private Guid? _me;
+    private Guid? _confirmId;
+    private bool _busy;
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationState is not null
+            && Guid.TryParse((await AuthenticationState).User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var me))
+        {
+            _me = me;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetAdminUsersAsync(_search);
+        _users = result.Value ?? [];
+        _error = result.Error;
+    }
+
+    private async Task ChangeAsync(AdminUserDto user)
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+
+        var result = user.IsAdmin ? await Api.RemoveAdminAsync(user.Id) : await Api.PromoteToAdminAsync(user.Id);
+        if (result.Succeeded)
+        {
+            // Their access changes on their next request. Their screen catches up when
+            // their session next refreshes (within 15 minutes) or they sign in again.
+            _message = user.IsAdmin
+                ? $"{user.DisplayName} is no longer an admin."
+                : $"{user.DisplayName} is now an admin. They'll see the admin pages within 15 minutes, or right away if they sign in again.";
+            _confirmId = null;
+            await LoadAsync();
+        }
+        else
+        {
+            _error = result.Error;
+        }
+
+        _busy = false;
+    }
+
+    // "Grace Hopper" -> "GH", same as the header avatar.
+    private static string Initials(string name) =>
+        string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(part => char.ToUpperInvariant(part[0])));
+}
