@@ -50,6 +50,12 @@ public sealed class PrayerApiClient(HttpClient http)
     public Task<ApiResult<AcknowledgmentResult>> AcknowledgeAsync(int postId, AcknowledgmentType type) =>
         SendAsync<AcknowledgmentResult>(HttpMethod.Post, $"/posts/{postId}/acknowledgments", new AcknowledgeRequest { Type = type });
 
+    public Task<ApiResult<AcknowledgmentResult>> ChangeAcknowledgmentAsync(int postId, AcknowledgmentType type) =>
+        SendAsync<AcknowledgmentResult>(HttpMethod.Put, $"/posts/{postId}/acknowledgments/mine", new AcknowledgeRequest { Type = type });
+
+    public Task<ApiResult<AcknowledgmentRemovedResult>> RemoveAcknowledgmentAsync(int postId) =>
+        SendAsync<AcknowledgmentRemovedResult>(HttpMethod.Delete, $"/posts/{postId}/acknowledgments/mine");
+
     public Task<ApiResult<AcknowledgmentSummary>> GetAcknowledgmentSummaryAsync(int postId) =>
         GetAsync<AcknowledgmentSummary>($"/posts/{postId}/acknowledgments/summary");
 

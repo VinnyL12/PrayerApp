@@ -1,11 +1,11 @@
 @inject PrayerApiClient Api
 @inject TimeProvider Time
 
-<article class="card post @(Post.IsUrgent ? "post-urgent" : "")">
+<article class="card post @(ShowUrgent ? "post-urgent" : "")">
     <header class="post-meta">
         <span class="author">@AuthorLabel</span>
         <span class="muted">· @TimeFormat.Ago(Post.CreatedAt, Time.GetUtcNow())</span>
-        @if (Post.IsUrgent)
+        @if (ShowUrgent)
         {
             <span class="tag tag-urgent">Urgent</span>
         }
@@ -37,7 +37,25 @@
         }
         else if (Post.MyAcknowledgment is { } mine)
         {
-            <span class="acknowledged"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>@mine.ToLabel()</span>
+            if (_changing)
+            {
+                <div class="ack-picker" role="group" aria-label="Change your response">
+                    @foreach (var type in AcknowledgmentPolicy.AllowedFor(Post.CommunityCategory, Post.Status))
+                    {
+                        <button class="chip @(type == mine ? "chip-selected" : "")" disabled="@(_busy || type == mine)"
+                                aria-pressed="@(type == mine)" @onclick="() => ChangeAsync(type)">@type.ToLabel()</button>
+                    }
+                    <button class="link-button quiet" disabled="@_busy" @onclick="() => _changing = false">Cancel</button>
+                </div>
+            }
+            else
+            {
+                <div class="ack-actions">
+                    <span class="acknowledged"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>@mine.ToLabel()</span>
+                    <button class="link-button quiet" disabled="@_busy" @onclick="() => _changing = true">Change</button>
+                    <button class="link-button quiet" disabled="@_busy" @onclick="RemoveAsync">Remove</button>
+                </div>
+            }
         }
         else if (Post.Status != PostStatus.Archived)
         {
@@ -63,7 +81,11 @@
     [Parameter] public bool ShowLink { get; set; } = true;
 
     private bool _busy;
+    private bool _changing;
     private string? _error;
+
+    // Urgency is about the wait. Once a post is answered (or archived) it's over.
+    private bool ShowUrgent => Post.IsUrgent && Post.Status == PostStatus.Active;
 
     private string AuthorLabel => (Post.IsMine, Post.IsAnonymous) switch
     {
@@ -93,6 +115,52 @@
             {
                 AcknowledgmentCount = result.Value!.AcknowledgmentCount,
                 MyAcknowledgment = type,
+            });
+        }
+        else
+        {
+            _error = result.Error;
+        }
+
+        _busy = false;
+    }
+
+    private async Task ChangeAsync(AcknowledgmentType type)
+    {
+        _busy = true;
+        _error = null;
+
+        var result = await Api.ChangeAcknowledgmentAsync(Post.Id, type);
+        if (result.Succeeded)
+        {
+            _changing = false;
+            await PostChanged.InvokeAsync(Post with
+            {
+                AcknowledgmentCount = result.Value!.AcknowledgmentCount,
+                MyAcknowledgment = type,
+            });
+        }
+        else
+        {
+            _error = result.Error;
+        }
+
+        _busy = false;
+    }
+
+    private async Task RemoveAsync()
+    {
+        _busy = true;
+        _error = null;
+
+        var result = await Api.RemoveAcknowledgmentAsync(Post.Id);
+        if (result.Succeeded)
+        {
+            // Back to the picker, so responding again is one tap.
+            await PostChanged.InvokeAsync(Post with
+            {
+                AcknowledgmentCount = result.Value!.AcknowledgmentCount,
+                MyAcknowledgment = null,
             });
         }
         else

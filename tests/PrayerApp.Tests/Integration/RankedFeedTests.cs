@@ -81,6 +81,23 @@ public class RankedFeedTests(ApiFactory factory)
         Assert.DoesNotContain(late, page1.Posts.Concat(page2.Posts).Select(p => p.Id));
     }
 
+    [Fact]
+    public async Task Answered_posts_stay_in_the_feed_and_archived_ones_leave()
+    {
+        var communityId = await factory.CreateCommunityAsync();
+        var author = await JoinedUserAsync(communityId);
+        var answered = await CreatePostAsync(author, communityId, "Answered");
+        var archived = await CreatePostAsync(author, communityId, "Archived");
+        var active = await CreatePostAsync(author, communityId, "Active");
+
+        await author.Client.PatchJsonAsync($"/posts/{answered}/status", new UpdatePostStatusRequest { Status = PostStatus.Answered });
+        await author.Client.PatchJsonAsync($"/posts/{archived}/status", new UpdatePostStatusRequest { Status = PostStatus.Archived });
+
+        var feed = await (await author.Client.GetAsync($"/communities/{communityId}/posts")).ReadAsync<FeedPage>();
+
+        Assert.Equal([active, answered], feed.Posts.Select(p => p.Id));
+    }
+
     private async Task<TestUser> JoinedUserAsync(int communityId)
     {
         var user = await factory.RegisterAsync();

@@ -1,5 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using PrayerApp.Api.Data;
 using PrayerApp.Domain.Entities;
+using PrayerApp.Shared.Enums;
 
 namespace PrayerApp.Api.Notifications;
 
@@ -59,7 +61,13 @@ public sealed class NotificationProcessor(
                 await using var scope = scopeFactory.CreateAsyncScope();
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-                db.Notifications.AddRange(batch.Select(e => new Notification
+                var toWrite = await StillNeededAsync(db, batch, ct);
+                if (toWrite.Count == 0)
+                {
+                    return;
+                }
+
+                db.Notifications.AddRange(toWrite.Select(e => new Notification
                 {
                     Type = e.Type,
                     RecipientUserId = e.RecipientUserId,
@@ -88,5 +96,54 @@ public sealed class NotificationProcessor(
                 return;
             }
         }
+    }
+
+    /// <summary>
+    /// Drops events that no longer need a row, which makes writing idempotent: the same
+    /// event processed twice (a retry, or one enqueued again) still yields one notification.
+    ///   - Withdrawn: the acknowledgment was removed before this batch ran.
+    ///   - Already written, or repeated within this batch: an acknowledgment removed and
+    ///     re-added quickly can enqueue two events for the same (post, supporter).
+    /// </summary>
+    private static async Task<List<NotificationEvent>> StillNeededAsync(
+        AppDbContext db, List<NotificationEvent> batch, CancellationToken ct)
+    {
+        var postIds = batch.Select(e => e.PostId).Distinct().ToList();
+        var actorIds = batch.Select(e => e.ActorUserId).Distinct().ToList();
+
+        // Two set-based queries per batch rather than two per event. Filtering on both
+        // IN-lists can over-fetch (a post from one event, an actor from another); the
+        // hash sets then answer each exact (post, actor) question in O(1).
+        var acknowledged = (await db.Acknowledgments
+                .Where(a => postIds.Contains(a.PostId) && actorIds.Contains(a.UserId))
+                .Select(a => new { a.PostId, a.UserId })
+                .ToListAsync(ct))
+            .Select(a => (a.PostId, a.UserId))
+            .ToHashSet();
+
+        var written = (await db.Notifications
+                .Where(n => postIds.Contains(n.PostId) && actorIds.Contains(n.ActorUserId))
+                .Select(n => new { n.Type, n.PostId, n.ActorUserId })
+                .ToListAsync(ct))
+            .Select(n => (n.Type, n.PostId, n.ActorUserId))
+            .ToHashSet();
+
+        var needed = new List<NotificationEvent>(batch.Count);
+        foreach (var e in batch)
+        {
+            if (e.Type == NotificationType.PostAcknowledged && !acknowledged.Contains((e.PostId, e.ActorUserId)))
+            {
+                continue;
+            }
+
+            // HashSet.Add returns false if the key was already there: one call both checks
+            // for an existing row and claims the key for this batch.
+            if (written.Add((e.Type, e.PostId, e.ActorUserId)))
+            {
+                needed.Add(e);
+            }
+        }
+
+        return needed;
     }
 }

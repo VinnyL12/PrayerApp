@@ -427,6 +427,13 @@ a.post-link:hover {
     gap: 0.4rem;
 }
 
+.ack-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.85rem;
+}
+
 .acknowledged {
     display: inline-flex;
     align-items: center;
@@ -1178,6 +1185,16 @@ input[type="checkbox"] {
     border-color: var(--primary);
     background: var(--primary-soft);
     color: var(--primary);
+}
+
+/* The viewer's current response, shown while they pick a different one. */
+.chip-selected,
+.chip-selected:disabled {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-weight: 600;
+    opacity: 1;
 }
 
 .link-button {

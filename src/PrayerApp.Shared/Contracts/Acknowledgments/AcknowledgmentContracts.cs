@@ -11,5 +11,7 @@ public sealed record AcknowledgeRequest
 
 public sealed record AcknowledgmentResult(int PostId, AcknowledgmentType Type, int AcknowledgmentCount);
 
+public sealed record AcknowledgmentRemovedResult(int PostId, int AcknowledgmentCount);
+
 /// <summary>Author-only view: how many people chose each response. Never who.</summary>
 public sealed record AcknowledgmentSummary(int PostId, int Total, IReadOnlyDictionary<AcknowledgmentType, int> ByType);

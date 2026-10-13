@@ -83,13 +83,18 @@ public static class PostEndpoints
         var velocityWindowStart = asOf.AddHours(-24);
         var oldestCandidate = asOf.AddDays(-CandidateWindowDays);
 
-        // One query: the newest active posts as of asOf, each with its count of
-        // acknowledgments in the 24 hours before asOf (a range seek on the
+        // One query: the newest active and answered posts as of asOf, each with its count
+        // of acknowledgments in the 24 hours before asOf (a range seek on the
         // (PostId, CreatedAt) index per post). Older posts have decayed to near-zero
         // scores, so capping the candidate set loses nothing a reader would reach.
+        //
+        // Answered posts stay so the community can celebrate them, and they rank exactly
+        // like active ones: a score that changed when the author marked a post answered
+        // would shift it mid-scroll and break the as-of paging guarantee. On the
+        // (CommunityId, Status, CreatedAt) index this is two seeks, one per status.
         var candidates = await db.Posts
             .Where(p => p.CommunityId == communityId
-                && p.Status == PostStatus.Active
+                && p.Status != PostStatus.Archived
                 && p.CreatedAt <= asOf
                 && p.CreatedAt >= oldestCandidate)
             .OrderByDescending(p => p.CreatedAt)

@@ -82,6 +82,50 @@ public class NotificationTests(ApiFactory factory)
         Assert.Equal(0, unread.UnreadCount);
     }
 
+    [Fact]
+    public async Task Removing_a_response_removes_its_notification()
+    {
+        var (author, supporter, postId) = await PostWithSupporterAsync();
+        await Acknowledge(supporter, postId);
+        await WaitForNotificationsAsync(author, count: 1);
+
+        await supporter.Client.DeleteAsync($"/posts/{postId}/acknowledgments/mine");
+
+        var list = await (await author.Client.GetAsync("/me/notifications")).ReadAsync<NotificationList>();
+        Assert.Empty(list.Items);
+        Assert.Equal(0, list.UnreadCount);
+    }
+
+    [Fact]
+    public async Task A_response_withdrawn_before_the_pipeline_runs_never_notifies()
+    {
+        var (author, supporter, postId) = await PostWithSupporterAsync();
+        var witness = await JoinedUserAsync((await (await author.Client.GetAsync($"/posts/{postId}")).ReadAsync<PostDto>()).CommunityId, "Witness");
+
+        await Acknowledge(supporter, postId);
+        await supporter.Client.DeleteAsync($"/posts/{postId}/acknowledgments/mine");
+
+        // The queue is FIFO with one consumer, so once the witness's notification exists,
+        // the supporter's event has been handled too, whichever side of the delete it fell.
+        await Acknowledge(witness, postId);
+        await WaitForNotificationsAsync(author, count: 1);
+    }
+
+    [Fact]
+    public async Task Responding_again_after_removing_notifies_once()
+    {
+        var (author, supporter, postId) = await PostWithSupporterAsync();
+        var witness = await JoinedUserAsync((await (await author.Client.GetAsync($"/posts/{postId}")).ReadAsync<PostDto>()).CommunityId, "Witness");
+
+        // Two events for the same (post, supporter) may reach the pipeline.
+        await Acknowledge(supporter, postId);
+        await supporter.Client.DeleteAsync($"/posts/{postId}/acknowledgments/mine");
+        await Acknowledge(supporter, postId);
+
+        await Acknowledge(witness, postId);
+        await WaitForNotificationsAsync(author, count: 2);
+    }
+
     /// <summary>
     /// The pipeline is asynchronous by design, so the test polls (with a deadline)
     /// instead of expecting the row the instant the acknowledgment returns.
