@@ -1,24 +1,32 @@
 @implements IDisposable
 @inject ModerationState Moderation
+@inject LiveConnection Live
 
 @* Sits on the avatar for admins, so pending reports stay visible now that Moderation
-   lives inside the profile. Rendered only for admins (see MainLayout), so it can poll. *@
+   lives inside the profile. Rendered only for admins (see MainLayout), so only admins
+   fetch the count. Live hints keep it current; polling covers a dropped connection. *@
 @if (Moderation.Summary.OpenCount > 0)
 {
     <span class="avatar-badge" title="@($"{Moderation.Summary.OpenCount} reported posts waiting")">@Moderation.Summary.OpenCount</span>
 }
 
 @code {
-    // Slower than the bell: reports are rarer than responses, and a minute's delay is fine.
+    // Fallback only. Slower than the bell: reports are rarer than responses.
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(60);
     private readonly CancellationTokenSource _stop = new();
 
     protected override async Task OnInitializedAsync()
     {
         Moderation.Changed += OnChanged;
+        Live.ModerationChanged += OnHint;
+        Live.Reconnected += OnHint;
+
         await Moderation.RefreshAsync();
+        _ = Live.EnsureStartedAsync();
         _ = PollAsync();
     }
+
+    private void OnHint() => _ = Moderation.RefreshAsync();
 
     private async Task PollAsync()
     {
@@ -27,7 +35,10 @@
         {
             while (await timer.WaitForNextTickAsync(_stop.Token))
             {
-                await Moderation.RefreshAsync();
+                if (!Live.IsConnected)
+                {
+                    await Moderation.RefreshAsync();
+                }
             }
         }
         catch (OperationCanceledException)
@@ -40,6 +51,8 @@
     public void Dispose()
     {
         Moderation.Changed -= OnChanged;
+        Live.ModerationChanged -= OnHint;
+        Live.Reconnected -= OnHint;
         _stop.Cancel();
         _stop.Dispose();
     }

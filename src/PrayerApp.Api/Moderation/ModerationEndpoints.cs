@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using PrayerApp.Api.Admin;
 using PrayerApp.Api.Common;
 using PrayerApp.Api.Data;
+using PrayerApp.Api.LiveUpdates;
 using PrayerApp.Api.Posts;
 using PrayerApp.Domain.Entities;
 using PrayerApp.Shared.Contracts.Moderation;
@@ -44,6 +45,7 @@ public static class ModerationEndpoints
         ClaimsPrincipal principal,
         TimeProvider time,
         IOptions<ModerationOptions> options,
+        LiveUpdatePublisher live,
         CancellationToken ct)
     {
         var me = principal.GetUserId();
@@ -102,6 +104,8 @@ public static class ModerationEndpoints
                 && p.ModerationStatus == ModerationStatus.Visible
                 && p.Reports.Count(r => r.ResolvedAt == null) >= threshold)
             .ExecuteUpdateAsync(s => s.SetProperty(p => p.ModerationStatus, ModerationStatus.UnderReview), ct);
+
+        await live.ModerationChangedAsync(ct);
 
         // No body: a reporter doesn't learn whether their report tipped the post over the
         // threshold, which would tell a bad actor how many accounts it takes.
@@ -166,7 +170,7 @@ public static class ModerationEndpoints
     }
 
     private static async Task<Results<Ok<PostDto>, NotFound>> Hide(
-        int postId, AppDbContext db, ClaimsPrincipal principal, TimeProvider time, CancellationToken ct)
+        int postId, AppDbContext db, ClaimsPrincipal principal, TimeProvider time, LiveUpdatePublisher live, CancellationToken ct)
     {
         var me = principal.GetUserId();
 
@@ -199,6 +203,13 @@ public static class ModerationEndpoints
             await db.SaveChangesAsync(ct);
             await ResolveOpenReportsAsync(db, postId, ReportResolution.PostHidden, me, now, ct);
             await transaction.CommitAsync(ct);
+
+            if (post.AuthorId != me)
+            {
+                await live.NotificationsChangedAsync(post.AuthorId, ct);
+            }
+
+            await live.ModerationChangedAsync(ct);
         }
 
         return TypedResults.Ok(await db.Posts.Where(p => p.Id == postId).ToDto(me).SingleAsync(ct));
@@ -206,7 +217,7 @@ public static class ModerationEndpoints
 
     /// <summary>"Keep post": dismiss its open reports and make it visible again.</summary>
     private static async Task<Results<Ok<PostDto>, NotFound>> Restore(
-        int postId, AppDbContext db, ClaimsPrincipal principal, TimeProvider time, CancellationToken ct)
+        int postId, AppDbContext db, ClaimsPrincipal principal, TimeProvider time, LiveUpdatePublisher live, CancellationToken ct)
     {
         var me = principal.GetUserId();
 
@@ -224,11 +235,18 @@ public static class ModerationEndpoints
         await ResolveOpenReportsAsync(db, postId, ReportResolution.Dismissed, me, time.GetUtcNow(), ct);
 
         // Undo the "your post was hidden" notice; it isn't true anymore.
-        await db.Notifications
+        var hiddenNoticesRemoved = await db.Notifications
             .Where(n => n.PostId == postId && n.Type == NotificationType.PostHidden)
             .ExecuteDeleteAsync(ct);
 
         await transaction.CommitAsync(ct);
+
+        if (hiddenNoticesRemoved > 0)
+        {
+            await live.NotificationsChangedAsync(post.AuthorId, ct);
+        }
+
+        await live.ModerationChangedAsync(ct);
 
         return TypedResults.Ok(await db.Posts.Where(p => p.Id == postId).ToDto(me).SingleAsync(ct));
     }

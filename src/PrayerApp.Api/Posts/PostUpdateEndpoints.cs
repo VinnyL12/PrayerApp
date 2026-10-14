@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using PrayerApp.Api.Common;
 using PrayerApp.Api.Data;
+using PrayerApp.Api.LiveUpdates;
 using PrayerApp.Domain.Entities;
 using PrayerApp.Shared.Contracts.Posts;
 using PrayerApp.Shared.Enums;
@@ -53,6 +54,7 @@ public static class PostUpdateEndpoints
         AppDbContext db,
         ClaimsPrincipal principal,
         TimeProvider time,
+        LiveUpdatePublisher live,
         CancellationToken ct)
     {
         var me = principal.GetUserId();
@@ -106,22 +108,26 @@ public static class PostUpdateEndpoints
         // whether 3 people responded or 3,000, and it commits or rolls back with the update.
         // (Queueing one event per supporter instead could overflow the 1,000-slot
         // in-memory queue and silently drop some.) Interpolated values become parameters.
-        var notified = await db.Database.ExecuteSqlInterpolatedAsync($"""
+        // OUTPUT hands back each inserted recipient in the same round trip, which is who
+        // gets a live hint. (SqlQuery<T> expects the column to be named Value.)
+        var recipients = await db.Database.SqlQuery<Guid>($"""
             INSERT INTO Notifications (RecipientUserId, PostId, PostUpdateId, ActorUserId, Type, IsRead, CreatedAt)
+            OUTPUT inserted.RecipientUserId AS Value
             SELECT a.UserId, a.PostId, {update.Id}, {me}, {(int)NotificationType.PostUpdated}, 0, {now}
             FROM Acknowledgments a
             WHERE a.PostId = {postId} AND a.UserId <> {me}
-            """, ct);
+            """).ToListAsync(ct);
 
         await transaction.CommitAsync(ct);
+        await live.NotificationsChangedAsync(recipients, ct);
 
         var dto = new PostUpdateDto(update.Id, update.Body, update.CreatedAt);
-        return TypedResults.Created($"/posts/{postId}/updates/{update.Id}", new PostUpdateCreated(dto, notified));
+        return TypedResults.Created($"/posts/{postId}/updates/{update.Id}", new PostUpdateCreated(dto, recipients.Count));
     }
 
     /// <summary>For a mistake or an overshare. Its notifications go with it.</summary>
     private static async Task<Results<NoContent, NotFound>> Delete(
-        int postId, int updateId, AppDbContext db, ClaimsPrincipal principal, CancellationToken ct)
+        int postId, int updateId, AppDbContext db, ClaimsPrincipal principal, LiveUpdatePublisher live, CancellationToken ct)
     {
         var me = principal.GetUserId();
 
@@ -133,9 +139,18 @@ public static class PostUpdateEndpoints
         // Notifications first: their foreign key to the update is NoAction (see
         // NotificationConfiguration), so the update can't be deleted while they point at it.
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
+
+        // Only unread ones move anyone's bell count, so only their recipients get a hint.
+        var unreadBy = await db.Notifications
+            .Where(n => n.PostUpdateId == updateId && !n.IsRead)
+            .Select(n => n.RecipientUserId)
+            .ToListAsync(ct);
+
         await db.Notifications.Where(n => n.PostUpdateId == updateId).ExecuteDeleteAsync(ct);
         await db.PostUpdates.Where(u => u.Id == updateId).ExecuteDeleteAsync(ct);
         await transaction.CommitAsync(ct);
+
+        await live.NotificationsChangedAsync(unreadBy, ct);
 
         return TypedResults.NoContent();
     }

@@ -21,7 +21,8 @@ ASP.NET Core Identity + JWT · xUnit + Testcontainers · GitHub Actions
   Authors see how many people responded and how, never who.
 - **Updates.** Authors add follow-ups ("Out of surgery, it went well"), and everyone who
   responded is notified.
-- **Notifications** grouped per post behind a bell with an unread count.
+- **Live notifications** grouped per post behind a bell whose unread count updates the
+  moment someone responds, over SignalR.
 - **Reporting and moderation.** Members report posts; three reports hide a post until an
   admin reviews it. Admins work a queue across every community and keep or hide posts.
 - **Two roles: user and admin.** Admins moderate and manage other admins from their
@@ -39,12 +40,13 @@ Each links to the code and the tests that prove it.
 | Race-safe counters: one response per user, counter always equal to its rows | [`AcknowledgmentEndpoints.cs`](src/PrayerApp.Api/Acknowledgments/AcknowledgmentEndpoints.cs) | [`AcknowledgmentTests`](tests/PrayerApp.Tests/Integration/AcknowledgmentTests.cs) |
 | Async notification pipeline (`Channel<T>` + `BackgroundService`), batched and idempotent | [`NotificationProcessor.cs`](src/PrayerApp.Api/Notifications/NotificationProcessor.cs) | [`NotificationTests`](tests/PrayerApp.Tests/Integration/NotificationTests.cs) |
 | Fan-out on write: one `INSERT … SELECT` notifies every supporter, atomically | [`PostUpdateEndpoints.cs`](src/PrayerApp.Api/Posts/PostUpdateEndpoints.cs) | [`PostUpdateTests`](tests/PrayerApp.Tests/Integration/PostUpdateTests.cs) |
+| Live updates over SignalR: payload-free hints sent after commit, JWT-authenticated sockets that close when the token expires, polling only while disconnected | [`LiveUpdatesHub.cs`](src/PrayerApp.Api/LiveUpdates/LiveUpdatesHub.cs), [`LiveConnection.cs`](src/PrayerApp.Client/Services/LiveConnection.cs) | [`LiveUpdatesTests`](tests/PrayerApp.Tests/Integration/LiveUpdatesTests.cs) |
 | Auto-hide that still triggers when reports arrive at the same moment | [`ModerationEndpoints.cs`](src/PrayerApp.Api/Moderation/ModerationEndpoints.cs) | [`ModerationTests`](tests/PrayerApp.Tests/Integration/ModerationTests.cs) |
 | Admin checks against the database, not the token, and a lock that prevents zero admins | [`AdminAuthorization.cs`](src/PrayerApp.Api/Admin/AdminAuthorization.cs), [`AdminEndpoints.cs`](src/PrayerApp.Api/Admin/AdminEndpoints.cs) | [`AdminTests`](tests/PrayerApp.Tests/Integration/AdminTests.cs) |
 | Private images through unguessable URLs; formats detected from the bytes | [`PostImageEndpoints.cs`](src/PrayerApp.Api/Posts/PostImageEndpoints.cs), [`ImageFormats.cs`](src/PrayerApp.Api/Common/ImageFormats.cs) | [`PostImageTests`](tests/PrayerApp.Tests/Integration/PostImageTests.cs) |
 | Link validation against `javascript:`, `user@host` tricks and lookalike domains | [`PostLinks.cs`](src/PrayerApp.Shared/Contracts/Posts/PostLinks.cs) | [`PostLinksTests`](tests/PrayerApp.Tests/Shared/PostLinksTests.cs) |
 
-135 tests, including integration tests against a real SQL Server started by Testcontainers.
+141 tests, including integration tests against a real SQL Server started by Testcontainers.
 CI builds with warnings as errors, runs every test, and fails if a model change is missing
 its migration.
 
@@ -60,6 +62,7 @@ flowchart LR
         Endpoints["Minimal API endpoints<br/>auth · posts · responses · updates<br/>moderation · admin · profile"]
         Queue[["Channel&lt;T&gt;<br/>bounded queue"]]
         Processor["NotificationProcessor<br/>BackgroundService"]
+        Hub["LiveUpdatesHub<br/>SignalR"]
     end
 
     DB[("SQL Server 2025<br/>via EF Core")]
@@ -70,6 +73,9 @@ flowchart LR
     Client -. "img src: capability URL" .-> Endpoints
     Endpoints --> DB
     Endpoints -- "after commit" --> Queue --> Processor -- "batched inserts" --> DB
+    Endpoints -- "after commit" --> Hub
+    Processor --> Hub
+    Hub -. "WebSocket: refetch hints" .-> Client
     Client -.- Shared
     Endpoints -.- Shared
     Endpoints -.- Domain
@@ -211,7 +217,10 @@ compose up -d`, then restart the API.
   own transactions and aren't affected.)
 - A notification batch that keeps failing is dropped after three attempts and logged; there's
   no dead-letter store.
-- The bell polls every 30 seconds and the moderation count every 60; SignalR would make both live.
+- Live updates run in one API process. Running several instances would need a SignalR
+  backplane (Redis or Azure SignalR) so a hint reaches users connected to another instance.
+- Admin status for live moderation hints is checked when a connection opens, so a promotion
+  or demotion applies on the next connection (at most one 15-minute token later).
 - The ranked feed considers the newest 500 posts from the last 30 days per community. My
   posts returns at most 100, the moderation queue 50 and the admin user search 50, without paging.
 - Images are stored in SQL Server, fine at this scale; larger deployments would move them to

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PrayerApp.Api.Data;
+using PrayerApp.Api.LiveUpdates;
 using PrayerApp.Domain.Entities;
 using PrayerApp.Shared.Enums;
 
@@ -12,6 +13,7 @@ namespace PrayerApp.Api.Notifications;
 public sealed class NotificationProcessor(
     NotificationQueue queue,
     IServiceScopeFactory scopeFactory,
+    LiveUpdatePublisher live,
     TimeProvider time,
     ILogger<NotificationProcessor> logger) : BackgroundService
 {
@@ -77,6 +79,10 @@ public sealed class NotificationProcessor(
                 }));
 
                 await db.SaveChangesAsync(ct);
+
+                // Committed, so recipients can be told to refetch. One hint per recipient per
+                // batch: the batching above doubles as coalescing for the live channel too.
+                await live.NotificationsChangedAsync(toWrite.Select(e => e.RecipientUserId), ct);
                 return;
             }
             catch (Exception ex) when (ex is not OperationCanceledException && attempt < MaxAttempts)

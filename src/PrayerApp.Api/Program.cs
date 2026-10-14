@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -9,12 +10,14 @@ using PrayerApp.Api.Admin;
 using PrayerApp.Api.Auth;
 using PrayerApp.Api.Communities;
 using PrayerApp.Api.Data;
+using PrayerApp.Api.LiveUpdates;
 using PrayerApp.Api.Moderation;
 using PrayerApp.Api.Notifications;
 using PrayerApp.Api.Posts;
 using PrayerApp.Api.Profile;
 using PrayerApp.Domain.Entities;
 using PrayerApp.Domain.Ranking;
+using PrayerApp.Shared.Contracts.Notifications;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +47,13 @@ builder.Services.AddOptions<ModerationOptions>().BindConfiguration("Moderation")
 // starts and stops with the app.
 builder.Services.AddSingleton<NotificationQueue>();
 builder.Services.AddHostedService<NotificationProcessor>();
+
+// Live updates: a SignalR hub that pushes "refetch" hints to signed-in browsers, replacing
+// the bell's polling. In-memory, so this works for one API instance; several instances
+// would need a backplane (Redis or Azure SignalR) to reach users connected elsewhere.
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, SubClaimUserIdProvider>();
+builder.Services.AddSingleton<LiveUpdatePublisher>();
 
 // --- Auth ---------------------------------------------------------------------------
 
@@ -84,6 +94,23 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
             NameClaimType = "name",
             // Default tolerance is 5 minutes, which would stretch a 15-minute token to 20.
             ClockSkew = TimeSpan.FromSeconds(30),
+        };
+
+        // Browsers can't set an Authorization header on a WebSocket, so the SignalR client
+        // sends the token as ?access_token=. Accept it there and nowhere else: a token in a
+        // URL can end up in logs and history, so ordinary endpoints keep requiring the header.
+        bearer.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var token = context.Request.Query["access_token"].ToString();
+                if (token.Length > 0 && context.Request.Path.StartsWithSegments(LiveUpdateEvents.HubPath))
+                {
+                    context.Token = token;
+                }
+
+                return Task.CompletedTask;
+            },
         };
     });
 
@@ -151,5 +178,11 @@ app.MapNotificationEndpoints();
 app.MapModerationEndpoints();
 app.MapAdminEndpoints();
 app.MapProfileEndpoints();
+
+// Behind the fallback policy like everything else. A JWT is only checked when a connection
+// opens, so without CloseOnAuthenticationExpiration a socket would outlive its 15-minute
+// token indefinitely; with it, the server drops the connection at expiry and the client
+// reconnects with a fresh token (re-checking admin status on the way in).
+app.MapHub<LiveUpdatesHub>(LiveUpdateEvents.HubPath, options => options.CloseOnAuthenticationExpiration = true);
 
 app.Run();

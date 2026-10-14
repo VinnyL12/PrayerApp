@@ -1,5 +1,6 @@
 @implements IDisposable
 @inject NotificationState Notifications
+@inject LiveConnection Live
 
 <NavLink href="/notifications" class="bell" title="Notifications" aria-label="@AriaLabel">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -14,6 +15,7 @@
 </NavLink>
 
 @code {
+    // Only used while the live connection is down (API restarting, network blip).
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(30);
     private readonly CancellationTokenSource _stop = new();
 
@@ -28,12 +30,22 @@
     protected override async Task OnInitializedAsync()
     {
         Notifications.Changed += OnChanged;
+        Live.NotificationsChanged += OnHint;
+        Live.Reconnected += OnHint;
+
         await Notifications.RefreshAsync();
+        _ = Live.EnsureStartedAsync();
         _ = PollAsync();
     }
 
+    // The server says this user's notifications changed: fetch the new count. Like a
+    // socket.on("...") handler that invalidates a query instead of carrying the data.
+    private void OnHint() => _ = Notifications.RefreshAsync();
+
     // Like setInterval in a useEffect, with the cleanup in Dispose. The bell only exists
-    // while signed in (it's inside <Authorized>), so polling stops on sign-out.
+    // while signed in (it's inside <Authorized>), so this stops on sign-out. While the live
+    // connection is up each tick does nothing; while it's down, the tick polls and tries
+    // to reconnect, so the bell is never more than 30 s stale.
     private async Task PollAsync()
     {
         using var timer = new PeriodicTimer(PollInterval);
@@ -41,7 +53,11 @@
         {
             while (await timer.WaitForNextTickAsync(_stop.Token))
             {
-                await Notifications.RefreshAsync();
+                if (!Live.IsConnected)
+                {
+                    await Notifications.RefreshAsync();
+                    await Live.EnsureStartedAsync();
+                }
             }
         }
         catch (OperationCanceledException)
@@ -56,6 +72,8 @@
     public void Dispose()
     {
         Notifications.Changed -= OnChanged;
+        Live.NotificationsChanged -= OnHint;
+        Live.Reconnected -= OnHint;
         _stop.Cancel();
         _stop.Dispose();
     }

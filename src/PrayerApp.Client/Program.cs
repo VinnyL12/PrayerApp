@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using PrayerApp.Client;
 using PrayerApp.Client.Auth;
 using PrayerApp.Client.Services;
+using PrayerApp.Shared.Contracts.Notifications;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -39,6 +40,13 @@ builder.Services.AddHttpClient<PrayerApiClient>(client => client.BaseAddress = a
     .AddHttpMessageHandler<BearerTokenHandler>();
 
 builder.Services.AddScoped<NotificationState>();
+
+// One SignalR connection per tab, created once and shared (a singleton lives as long as the tab).
+builder.Services.AddSingleton(sp => new LiveConnection(
+    new Uri(apiBaseUrl, LiveUpdateEvents.HubPath),
+    sp.GetRequiredService<AuthService>(),
+    sp.GetRequiredService<TokenStore>(),
+    sp.GetRequiredService<ILogger<LiveConnection>>()));
 builder.Services.AddScoped<ModerationState>();
 
 await builder.Build().RunAsync();

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using PrayerApp.Api.Common;
 using PrayerApp.Api.Data;
+using PrayerApp.Api.LiveUpdates;
 using PrayerApp.Api.Notifications;
 using PrayerApp.Api.Posts;
 using PrayerApp.Domain.Entities;
@@ -177,12 +178,16 @@ public static class AcknowledgmentEndpoints
         int postId,
         AppDbContext db,
         ClaimsPrincipal principal,
+        LiveUpdatePublisher live,
         CancellationToken ct)
     {
         var me = principal.GetUserId();
 
         // As in Change, archived posts are invisible here and so frozen.
-        if (!await db.Posts.Where(p => p.Id == postId).VisibleTo(me).AnyAsync(ct))
+        var post = await db.Posts.Where(p => p.Id == postId).VisibleTo(me)
+            .Select(p => new { p.AuthorId })
+            .SingleOrDefaultAsync(ct);
+        if (post is null)
         {
             return TypedResults.NotFound();
         }
@@ -207,11 +212,16 @@ public static class AcknowledgmentEndpoints
 
         // If the notification hasn't been written yet, NotificationProcessor sees the
         // acknowledgment is gone and skips it.
-        await db.Notifications
+        var notificationsRemoved = await db.Notifications
             .Where(n => n.PostId == postId && n.ActorUserId == me && n.Type == NotificationType.PostAcknowledged)
             .ExecuteDeleteAsync(ct);
 
         await transaction.CommitAsync(ct);
+
+        if (notificationsRemoved > 0)
+        {
+            await live.NotificationsChangedAsync(post.AuthorId, ct);
+        }
 
         var count = await db.Posts.Where(p => p.Id == postId).Select(p => p.AcknowledgmentCount).SingleAsync(ct);
         return TypedResults.Ok(new AcknowledgmentRemovedResult(postId, count));
