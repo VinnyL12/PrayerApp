@@ -19,6 +19,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Not used directly: overrides the vulnerable 9.0.11 that Microsoft.Data.SqlClient pulls in
+         (CVE-2026-84008, CVE-2026-70162). Remove once SqlClient depends on a patched version. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\PrayerApp.Domain\PrayerApp.Domain.csproj" />
     <ProjectReference Include="..\PrayerApp.Shared\PrayerApp.Shared.csproj" />
   </ItemGroup>
