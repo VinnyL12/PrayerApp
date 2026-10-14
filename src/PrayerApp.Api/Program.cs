@@ -43,9 +43,9 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(conn
 builder.Services.AddOptions<RankingOptions>().BindConfiguration("Ranking");
 builder.Services.AddOptions<ModerationOptions>().BindConfiguration("Moderation");
 
-// Notification pipeline: one shared queue, drained by a hosted background service that
-// starts and stops with the app.
-builder.Services.AddSingleton<NotificationQueue>();
+// Notification pipeline: requests write to the NotificationOutbox table in their own
+// transaction, then ring the signal; a hosted background service drains the table.
+builder.Services.AddSingleton<NotificationSignal>();
 builder.Services.AddHostedService<NotificationProcessor>();
 
 // Live updates: a SignalR hub that pushes "refetch" hints to signed-in browsers, replacing

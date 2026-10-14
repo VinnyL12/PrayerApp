@@ -12,6 +12,11 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
         builder.HasIndex(n => new { n.RecipientUserId, n.IsRead, n.CreatedAt })
             .IsDescending(false, false, true);
 
+        // Withdrawing a response deletes its notification by (post, actor), and the processor's
+        // duplicate check looks up the same pair. A seek touches only matching rows; a scan
+        // would lock its way across the whole table and wait on unrelated writes.
+        builder.HasIndex(n => new { n.PostId, n.ActorUserId });
+
         // A user's own notifications go with them.
         builder.HasOne(n => n.Recipient)
             .WithMany(u => u.Notifications)

@@ -106,8 +106,8 @@ public static class PostUpdateEndpoints
         // Fan-out on write, in one statement: a notification row for every current
         // supporter, built inside SQL Server from the Acknowledgments table. One round trip
         // whether 3 people responded or 3,000, and it commits or rolls back with the update.
-        // (Queueing one event per supporter instead could overflow the 1,000-slot
-        // in-memory queue and silently drop some.) Interpolated values become parameters.
+        // (Routing one outbox row per supporter through the processor instead would mean
+        // thousands of rows and a delay for the same result.) Interpolated values become parameters.
         // OUTPUT hands back each inserted recipient in the same round trip, which is who
         // gets a live hint. (SqlQuery<T> expects the column to be named Value.)
         var recipients = await db.Database.SqlQuery<Guid>($"""

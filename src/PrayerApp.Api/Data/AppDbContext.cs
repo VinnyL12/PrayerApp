@@ -19,6 +19,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<PostUpdate> PostUpdates => Set<PostUpdate>();
     public DbSet<Acknowledgment> Acknowledgments => Set<Acknowledgment>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<OutboxNotification> NotificationOutbox => Set<OutboxNotification>();
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 

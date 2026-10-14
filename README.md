@@ -38,7 +38,7 @@ Each links to the code and the tests that prove it.
 | Stable cursor pagination while scores change mid-scroll, with no server state | [`FeedCursor.cs`](src/PrayerApp.Api/Common/FeedCursor.cs), [`PostEndpoints.cs`](src/PrayerApp.Api/Posts/PostEndpoints.cs) | [`RankedFeedTests`](tests/PrayerApp.Tests/Integration/RankedFeedTests.cs) |
 | Rotating refresh tokens in an httpOnly cookie, with reuse (theft) detection | [`RefreshTokenService.cs`](src/PrayerApp.Api/Auth/RefreshTokenService.cs) | [`AuthFlowTests`](tests/PrayerApp.Tests/Integration/AuthFlowTests.cs) |
 | Race-safe counters: one response per user, counter always equal to its rows | [`AcknowledgmentEndpoints.cs`](src/PrayerApp.Api/Acknowledgments/AcknowledgmentEndpoints.cs) | [`AcknowledgmentTests`](tests/PrayerApp.Tests/Integration/AcknowledgmentTests.cs) |
-| Async notification pipeline (`Channel<T>` + `BackgroundService`), batched and idempotent | [`NotificationProcessor.cs`](src/PrayerApp.Api/Notifications/NotificationProcessor.cs) | [`NotificationTests`](tests/PrayerApp.Tests/Integration/NotificationTests.cs) |
+| Transactional outbox: a notification is saved with the response that causes it, survives restarts, and is drained in batches by a `BackgroundService`; rows are claimed with `UPDLOCK, READPAST` so several workers never deliver one twice, and a row that keeps failing is set aside instead of blocking the rest | [`NotificationProcessor.cs`](src/PrayerApp.Api/Notifications/NotificationProcessor.cs), [`AcknowledgmentEndpoints.cs`](src/PrayerApp.Api/Acknowledgments/AcknowledgmentEndpoints.cs) | [`NotificationOutboxTests`](tests/PrayerApp.Tests/Integration/NotificationOutboxTests.cs), [`NotificationTests`](tests/PrayerApp.Tests/Integration/NotificationTests.cs) |
 | Fan-out on write: one `INSERT … SELECT` notifies every supporter, atomically | [`PostUpdateEndpoints.cs`](src/PrayerApp.Api/Posts/PostUpdateEndpoints.cs) | [`PostUpdateTests`](tests/PrayerApp.Tests/Integration/PostUpdateTests.cs) |
 | Live updates over SignalR: payload-free hints sent after commit, JWT-authenticated sockets that close when the token expires, polling only while disconnected | [`LiveUpdatesHub.cs`](src/PrayerApp.Api/LiveUpdates/LiveUpdatesHub.cs), [`LiveConnection.cs`](src/PrayerApp.Client/Services/LiveConnection.cs) | [`LiveUpdatesTests`](tests/PrayerApp.Tests/Integration/LiveUpdatesTests.cs) |
 | Auto-hide that still triggers when reports arrive at the same moment | [`ModerationEndpoints.cs`](src/PrayerApp.Api/Moderation/ModerationEndpoints.cs) | [`ModerationTests`](tests/PrayerApp.Tests/Integration/ModerationTests.cs) |
@@ -46,7 +46,7 @@ Each links to the code and the tests that prove it.
 | Private images through unguessable URLs; formats detected from the bytes | [`PostImageEndpoints.cs`](src/PrayerApp.Api/Posts/PostImageEndpoints.cs), [`ImageFormats.cs`](src/PrayerApp.Api/Common/ImageFormats.cs) | [`PostImageTests`](tests/PrayerApp.Tests/Integration/PostImageTests.cs) |
 | Link validation against `javascript:`, `user@host` tricks and lookalike domains | [`PostLinks.cs`](src/PrayerApp.Shared/Contracts/Posts/PostLinks.cs) | [`PostLinksTests`](tests/PrayerApp.Tests/Shared/PostLinksTests.cs) |
 
-141 tests, including integration tests against a real SQL Server started by Testcontainers.
+145 tests, including integration tests against a real SQL Server started by Testcontainers.
 CI builds with warnings as errors, runs every test, and fails if a model change is missing
 its migration.
 
@@ -60,7 +60,6 @@ flowchart LR
 
     subgraph API["ASP.NET Core API · PrayerApp.Api"]
         Endpoints["Minimal API endpoints<br/>auth · posts · responses · updates<br/>moderation · admin · profile"]
-        Queue[["Channel&lt;T&gt;<br/>bounded queue"]]
         Processor["NotificationProcessor<br/>BackgroundService"]
         Hub["LiveUpdatesHub<br/>SignalR"]
     end
@@ -72,7 +71,9 @@ flowchart LR
     Client -- "JWT bearer · refresh cookie" --> Endpoints
     Client -. "img src: capability URL" .-> Endpoints
     Endpoints --> DB
-    Endpoints -- "after commit" --> Queue --> Processor -- "batched inserts" --> DB
+    Endpoints -- "response + outbox row,<br/>one transaction" --> DB
+    Endpoints -. "after commit: wake up" .-> Processor
+    Processor -- "drain outbox in batches" --> DB
     Endpoints -- "after commit" --> Hub
     Processor --> Hub
     Hub -. "WebSocket: refetch hints" .-> Client
@@ -123,10 +124,14 @@ unique index on (post, user) is the final guard against double taps. Removing a 
 decrements only if the `DELETE` actually removed a row, so ten simultaneous removes
 decrement once.
 
-**Notifications, two ways.** Response notifications are enqueued after commit on a bounded
-in-process `Channel<T>`, drained in batches by a hosted `BackgroundService` with retry and
-exponential backoff. The writer skips responses withdrawn before it ran and duplicate
-events, so processing the same event twice still produces one row. Post updates take the
+**Notifications, two ways.** Response notifications go through a transactional outbox: the
+response and a `NotificationOutbox` row commit together, then a hosted `BackgroundService`
+drains the table in batches with retry and exponential backoff, deleting each row in the
+same transaction that writes its notification. Nothing is lost to a restart; the processor
+drains whatever is left when it starts. The writer skips responses withdrawn before it ran
+and duplicate events, so processing the same event twice still produces one row.
+Withdrawing a response cancels its pending row first and touches the post's counter last,
+an order chosen so it can't deadlock with the processor (the race is covered by a test). Post updates take the
 other path, fan-out on write: the update and a notification for every current supporter are
 inserted in one transaction by a single `INSERT … SELECT`, one round trip whether three
 people responded or three thousand.
@@ -212,11 +217,8 @@ compose up -d`, then restart the API.
 
 ## Known limitations
 
-- Response notifications queued in memory are lost if the API restarts. An outbox table or a
-  broker would make them durable. (Update and moderation notifications are written in their
-  own transactions and aren't affected.)
-- A notification batch that keeps failing is dropped after three attempts and logged; there's
-  no dead-letter store.
+- An outbox row that keeps failing on its own is set aside with its error in the
+  `NotificationOutbox` table; there's no screen to inspect or replay these yet.
 - Live updates run in one API process. Running several instances would need a SignalR
   backplane (Redis or Azure SignalR) so a hint reaches users connected to another instance.
 - Admin status for live moderation hints is checked when a connection opens, so a promotion
@@ -227,8 +229,6 @@ compose up -d`, then restart the API.
   blob storage behind a CDN.
 - Posting with a photo is two requests (create, then upload). If the upload fails the post
   still exists, and the composer says so.
-- A response withdrawn in the instant between the notification writer's check and its insert
-  can leave one stray notification.
 - Login responds slightly faster for unknown emails, and registration reveals whether an
   email is taken (account enumeration).
 - Two tabs refreshing the session at the same instant look like token theft and sign the user out.

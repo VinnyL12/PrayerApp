@@ -33,7 +33,7 @@ public static class AcknowledgmentEndpoints
         AppDbContext db,
         ClaimsPrincipal principal,
         TimeProvider time,
-        NotificationQueue notifications,
+        NotificationSignal notifications,
         CancellationToken ct)
     {
         var me = principal.GetUserId();
@@ -91,6 +91,18 @@ public static class AcknowledgmentEndpoints
             CreatedAt = now,
         });
 
+        // The transactional outbox: the "notify the author" event is saved in the same
+        // transaction as the acknowledgment itself, so it exists exactly when the
+        // acknowledgment does and survives a restart. Same SaveChanges, same round trip.
+        db.NotificationOutbox.Add(new OutboxNotification
+        {
+            Type = NotificationType.PostAcknowledged,
+            RecipientUserId = post.AuthorId,
+            ActorUserId = me,
+            PostId = postId,
+            OccurredAt = now,
+        });
+
         try
         {
             await db.SaveChangesAsync(ct);
@@ -111,11 +123,10 @@ public static class AcknowledgmentEndpoints
 
         await transaction.CommitAsync(ct);
 
-        // Only after commit: enqueueing earlier could notify the author about an
-        // acknowledgment that then rolled back. Non-blocking; the author's notification
-        // row is written moments later by NotificationProcessor.
-        notifications.TryEnqueue(new NotificationEvent(
-            NotificationType.PostAcknowledged, post.AuthorId, me, postId, now));
+        // Wake the processor now rather than at its next timed check. Only after commit,
+        // or it could look before the row is visible. Non-blocking; the author's
+        // notification row is written moments later by NotificationProcessor.
+        notifications.Ring();
 
         var count = await db.Posts.Where(p => p.Id == postId).Select(p => p.AcknowledgmentCount).SingleAsync(ct);
         return TypedResults.Ok(new AcknowledgmentResult(postId, request.Type, count));
@@ -193,11 +204,34 @@ public static class AcknowledgmentEndpoints
         }
 
         // The mirror image of Acknowledge: row and counter change together or not at all.
+        // Statement order matters here, because NotificationProcessor may be working on this
+        // very response at the same moment:
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
 
-        // The DELETE's row count decides whether to decrement, not an earlier read. Two
-        // simultaneous removes both run it; the second blocks on the first's row lock,
-        // then finds nothing to delete, so the counter goes down exactly once.
+        // 1. Cancel the pending "notify the author" event. If the processor has claimed it,
+        //    the DELETE waits for the processor to commit (its UPDLOCK); this transaction
+        //    holds nothing yet, so the processor never waits on us.
+        //    Find the row first, then delete it by primary key: that takes locks in the same
+        //    order the processor does (clustered key, then the secondary index). Deleting
+        //    straight through the (PostId, ActorUserId) index locks them in the opposite
+        //    order, and two statements locking two things in opposite orders can deadlock.
+        var pending = await db.NotificationOutbox
+            .Where(e => e.PostId == postId && e.ActorUserId == me && e.Type == NotificationType.PostAcknowledged)
+            .Select(e => e.Id)
+            .ToListAsync(ct);
+        if (pending.Count > 0)
+        {
+            await db.NotificationOutbox.Where(e => pending.Contains(e.Id)).ExecuteDeleteAsync(ct);
+        }
+
+        // 2. Delete the notification, which by now is either written or never will be.
+        var notificationsRemoved = await db.Notifications
+            .Where(n => n.PostId == postId && n.ActorUserId == me && n.Type == NotificationType.PostAcknowledged)
+            .ExecuteDeleteAsync(ct);
+
+        // 3. The DELETE's row count decides whether to decrement, not an earlier read. Two
+        //    simultaneous removes both run it; the second blocks on the first's row lock,
+        //    then finds nothing to delete, so the counter goes down exactly once.
         var removed = await db.Acknowledgments
             .Where(a => a.PostId == postId && a.UserId == me)
             .ExecuteDeleteAsync(ct);
@@ -206,15 +240,13 @@ public static class AcknowledgmentEndpoints
             return NotAcknowledged();
         }
 
+        // 4. The post row last. Every response and withdrawal on this post queues for its
+        //    lock, and the processor reads it to check the notification's foreign key. Taking
+        //    it last, then committing straight away, means nobody holding it ever waits on
+        //    the processor: no cycle, so no deadlock. (Taking it before step 2 deadlocked.)
         await db.Posts
             .Where(p => p.Id == postId)
             .ExecuteUpdateAsync(s => s.SetProperty(p => p.AcknowledgmentCount, p => p.AcknowledgmentCount - 1), ct);
-
-        // If the notification hasn't been written yet, NotificationProcessor sees the
-        // acknowledgment is gone and skips it.
-        var notificationsRemoved = await db.Notifications
-            .Where(n => n.PostId == postId && n.ActorUserId == me && n.Type == NotificationType.PostAcknowledged)
-            .ExecuteDeleteAsync(ct);
 
         await transaction.CommitAsync(ct);
 

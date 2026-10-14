@@ -335,14 +335,51 @@ namespace PrayerApp.Api.Data.Migrations
 
                     b.HasIndex("ActorUserId");
 
-                    b.HasIndex("PostId");
-
                     b.HasIndex("PostUpdateId");
+
+                    b.HasIndex("PostId", "ActorUserId");
 
                     b.HasIndex("RecipientUserId", "IsRead", "CreatedAt")
                         .IsDescending(false, false, true);
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("PrayerApp.Domain.Entities.OutboxNotification", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("FailedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("PostId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("RecipientUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId", "ActorUserId");
+
+                    b.ToTable("NotificationOutbox", (string)null);
                 });
 
             modelBuilder.Entity("PrayerApp.Domain.Entities.Post", b =>

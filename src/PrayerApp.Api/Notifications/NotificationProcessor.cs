@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PrayerApp.Api.Data;
+using PrayerApp.Api.Data.Configurations;
 using PrayerApp.Api.LiveUpdates;
 using PrayerApp.Domain.Entities;
 using PrayerApp.Shared.Enums;
@@ -7,112 +8,213 @@ using PrayerApp.Shared.Enums;
 namespace PrayerApp.Api.Notifications;
 
 /// <summary>
-/// The consumer side of <see cref="NotificationQueue"/>: a long-running background loop
-/// that turns events into Notification rows, in batches, with retries.
+/// Drains the notification outbox: a long-running background loop that turns
+/// <see cref="OutboxNotification"/> rows into Notification rows, in batches, with retries.
+///
+/// Delivery is at-least-once by construction: a row leaves the outbox in the same
+/// transaction that writes its notification, so a crash at any point either leaves both
+/// undone (the row is retried) or both done. The writer is idempotent on top of that.
 /// </summary>
 public sealed class NotificationProcessor(
-    NotificationQueue queue,
+    NotificationSignal signal,
     IServiceScopeFactory scopeFactory,
     LiveUpdatePublisher live,
     TimeProvider time,
     ILogger<NotificationProcessor> logger) : BackgroundService
 {
-    private const int MaxBatchSize = 100;
+    public const int MaxBatchSize = 100;
     private const int MaxAttempts = 3;
+
+    // The signal covers rows written by this process. The timer covers the rest: rows from
+    // another API instance, or a signal lost to a crash between commit and ring.
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(30);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var batch = new List<NotificationEvent>(MaxBatchSize);
-
-        try
+        // Draining first thing on startup is what makes a restart lossless: whatever was
+        // committed but not yet processed when the last process stopped is still here.
+        while (!stoppingToken.IsCancellationRequested)
         {
-            // Sleeps (no CPU, no polling) until at least one event is available.
-            while (await queue.Reader.WaitToReadAsync(stoppingToken))
+            try
             {
-                // Take everything already waiting, up to a cap, so a burst of 50
-                // acknowledgments becomes one database round trip instead of 50.
-                while (batch.Count < MaxBatchSize && queue.Reader.TryRead(out var notification))
+                // A full batch means there may be more; keep going until a partial one.
+                while (await ProcessWithRetryAsync(stoppingToken) == MaxBatchSize)
                 {
-                    batch.Add(notification);
                 }
-
-                await WriteWithRetryAsync(batch, stoppingToken);
-                batch.Clear();
             }
-        }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-        {
-            // Normal shutdown.
-        }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                // Database unreachable, most likely. Rows stay in the outbox; try again later.
+                // Catching everything keeps one bad drain from stopping the loop for good.
+                logger.LogError(ex, "Draining the notification outbox failed; retrying in up to {Interval}.", PollInterval);
+            }
 
-        if (queue.Reader.Count > 0)
-        {
-            logger.LogWarning("Stopping with {Count} undelivered notifications.", queue.Reader.Count);
+            try
+            {
+                await signal.WaitAsync(PollInterval, time, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
         }
     }
 
-    private async Task WriteWithRetryAsync(List<NotificationEvent> batch, CancellationToken ct)
+    /// <summary>Processes one batch, retrying transient failures. Returns how many rows it took.</summary>
+    private async Task<int> ProcessWithRetryAsync(CancellationToken ct)
     {
         for (var attempt = 1; ; attempt++)
         {
             try
             {
-                // This service is a singleton living for the whole app; DbContext is scoped
-                // (one per unit of work). So each batch gets its own scope and DbContext,
-                // the same way each HTTP request does.
-                await using var scope = scopeFactory.CreateAsyncScope();
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-                var toWrite = await StillNeededAsync(db, batch, ct);
-                if (toWrite.Count == 0)
-                {
-                    return;
-                }
-
-                db.Notifications.AddRange(toWrite.Select(e => new Notification
-                {
-                    Type = e.Type,
-                    RecipientUserId = e.RecipientUserId,
-                    ActorUserId = e.ActorUserId,
-                    PostId = e.PostId,
-                    CreatedAt = e.OccurredAt,
-                }));
-
-                await db.SaveChangesAsync(ct);
-
-                // Committed, so recipients can be told to refetch. One hint per recipient per
-                // batch: the batching above doubles as coalescing for the live channel too.
-                await live.NotificationsChangedAsync(toWrite.Select(e => e.RecipientUserId), ct);
-                return;
+                return await ProcessBatchAsync(onlyId: null, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException && attempt < MaxAttempts)
             {
                 // Exponential backoff (200ms, 400ms) for transient failures like a
                 // dropped connection or a deadlock victim.
                 var delay = TimeSpan.FromMilliseconds(200 * Math.Pow(2, attempt - 1));
-                logger.LogWarning(ex, "Writing {Count} notifications failed (attempt {Attempt}); retrying in {Delay}.",
-                    batch.Count, attempt, delay);
+                logger.LogWarning(ex, "Writing notifications failed (attempt {Attempt}); retrying in {Delay}.", attempt, delay);
                 await Task.Delay(delay, time, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // Give up rather than block the queue forever. A durable design would move
-                // these to a dead-letter store for inspection instead of only logging.
-                logger.LogError(ex, "Dropping {Count} notifications after {Attempts} attempts.", batch.Count, MaxAttempts);
-                return;
+                // Still failing. Maybe the database is down, maybe one bad row is failing the
+                // whole batch; processing rows one at a time tells the two apart.
+                logger.LogWarning(ex, "A notification batch failed {Attempts} times; retrying its rows one at a time.", MaxAttempts);
+                return await IsolateFailuresAsync(ct);
             }
         }
     }
 
     /// <summary>
-    /// Drops events that no longer need a row, which makes writing idempotent: the same
-    /// event processed twice (a retry, or one enqueued again) still yields one notification.
+    /// Retries each pending row in its own transaction and sets aside (dead-letters) any row
+    /// that fails alone, so one poison row can't hold up every notification behind it.
+    /// If the database itself is down, setting the row aside fails too and the exception
+    /// propagates: nothing is set aside, and the outer loop backs off.
+    /// </summary>
+    private async Task<int> IsolateFailuresAsync(CancellationToken ct)
+    {
+        List<long> ids;
+        await using (var scope = scopeFactory.CreateAsyncScope())
+        {
+            ids = await scope.ServiceProvider.GetRequiredService<AppDbContext>().NotificationOutbox
+                .Where(e => e.FailedAt == null)
+                .OrderBy(e => e.Id)
+                .Select(e => e.Id)
+                .Take(MaxBatchSize)
+                .ToListAsync(ct);
+        }
+
+        foreach (var id in ids)
+        {
+            try
+            {
+                await ProcessBatchAsync(onlyId: id, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                await SetAsideAsync(id, ex, ct);
+            }
+        }
+
+        return ids.Count;
+    }
+
+    private async Task SetAsideAsync(long id, Exception ex, CancellationToken ct)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var error = ex.GetBaseException().Message;
+        if (error.Length > OutboxNotificationConfiguration.LastErrorMaxLength)
+        {
+            error = error[..OutboxNotificationConfiguration.LastErrorMaxLength];
+        }
+
+        await db.NotificationOutbox
+            .Where(e => e.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(e => e.FailedAt, time.GetUtcNow())
+                .SetProperty(e => e.LastError, error), ct);
+
+        logger.LogError(ex, "Set aside outbox notification {Id} after it failed on its own.", id);
+    }
+
+    /// <summary>
+    /// One unit of work: claim pending rows, write their notifications, delete them, commit.
+    /// Returns how many rows it claimed.
+    /// </summary>
+    private async Task<int> ProcessBatchAsync(long? onlyId, CancellationToken ct)
+    {
+        // This service is a singleton living for the whole app; DbContext is scoped (one per
+        // unit of work). So each batch gets its own scope and DbContext, the same way each
+        // HTTP request does.
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+
+        // Claim rows the classic SQL Server queue way. UPDLOCK keeps them locked until commit;
+        // READPAST skips rows someone else has locked instead of waiting. Two processors (two
+        // API instances) therefore take different rows rather than delivering the same one
+        // twice, and a request deleting a row it just wrote (see Acknowledgment Remove) makes
+        // the processor skip it.
+        var claimed = await (onlyId is null
+                ? db.NotificationOutbox.FromSql($"""
+                    SELECT TOP ({MaxBatchSize}) * FROM NotificationOutbox WITH (UPDLOCK, READPAST, ROWLOCK)
+                    WHERE FailedAt IS NULL
+                    ORDER BY Id
+                    """)
+                : db.NotificationOutbox.FromSql($"""
+                    SELECT * FROM NotificationOutbox WITH (UPDLOCK, READPAST, ROWLOCK)
+                    WHERE Id = {onlyId.Value} AND FailedAt IS NULL
+                    """))
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        if (claimed.Count == 0)
+        {
+            return 0;
+        }
+
+        var needed = await StillNeededAsync(db, claimed, ct);
+        db.Notifications.AddRange(needed.Select(e => new Notification
+        {
+            Type = e.Type,
+            RecipientUserId = e.RecipientUserId,
+            ActorUserId = e.ActorUserId,
+            PostId = e.PostId,
+            CreatedAt = e.OccurredAt,
+        }));
+        await db.SaveChangesAsync(ct);
+
+        // Every claimed row leaves the outbox, including the ones StillNeeded skipped:
+        // those were handled too, by deciding no notification was needed.
+        var ids = claimed.Select(e => e.Id).ToList();
+        await db.NotificationOutbox.Where(e => ids.Contains(e.Id)).ExecuteDeleteAsync(ct);
+
+        await transaction.CommitAsync(ct);
+
+        // Committed, so recipients can be told to refetch. One hint per recipient per
+        // batch: batching doubles as coalescing for the live channel too.
+        await live.NotificationsChangedAsync(needed.Select(e => e.RecipientUserId), ct);
+        return claimed.Count;
+    }
+
+    /// <summary>
+    /// Drops rows that no longer need a notification, which keeps writing idempotent: the same
+    /// event processed twice still yields one notification.
     ///   - Withdrawn: the acknowledgment was removed before this batch ran.
     ///   - Already written, or repeated within this batch: an acknowledgment removed and
-    ///     re-added quickly can enqueue two events for the same (post, supporter).
+    ///     re-added quickly leaves two rows for the same (post, supporter).
     /// </summary>
-    private static async Task<List<NotificationEvent>> StillNeededAsync(
-        AppDbContext db, List<NotificationEvent> batch, CancellationToken ct)
+    private static async Task<List<OutboxNotification>> StillNeededAsync(
+        AppDbContext db, List<OutboxNotification> batch, CancellationToken ct)
     {
         var postIds = batch.Select(e => e.PostId).Distinct().ToList();
         var actorIds = batch.Select(e => e.ActorUserId).Distinct().ToList();
@@ -134,7 +236,7 @@ public sealed class NotificationProcessor(
             .Select(n => (n.Type, n.PostId, n.ActorUserId))
             .ToHashSet();
 
-        var needed = new List<NotificationEvent>(batch.Count);
+        var needed = new List<OutboxNotification>(batch.Count);
         foreach (var e in batch)
         {
             if (e.Type == NotificationType.PostAcknowledged && !acknowledged.Contains((e.PostId, e.ActorUserId)))
