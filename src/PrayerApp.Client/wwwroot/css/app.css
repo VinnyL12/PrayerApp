@@ -1,30 +1,38 @@
 /* =================================================================================
    Prayer App design system
-   Primary #564786 on a warm tan canvas. Every color is a token defined here, so the
-   palette can be changed in one place.
+   Primary green #006039 on a soft gray-green canvas (#e8ece9). Every color is a token
+   defined here, so the palette can be changed in one place.
    ================================================================================= */
 
 :root {
     /* Canvas */
-    --bg: #f7f5f1;
-    --surface: #fffdfa;
-    --surface-sunken: #f1eee8;
-    --border: #e5dfd5;
-    --border-strong: #d6cfc2;
+    --bg: #e8ece9;
+    --surface: #f7f9f7;
+    --surface-sunken: #dee5e0;
+    --border: #d2dad5;
+    --border-strong: #bcc8c1;
 
     /* Text */
-    --text: #24212b;
-    --text-soft: #4a4553;
-    --muted: #716b7b;
+    --text: #1f2924;
+    --text-soft: #3d4a43;
+    --muted: #586660;
 
     /* Brand */
-    --primary: #564786;
-    --primary-hover: #47396f;
-    --primary-pressed: #3b2f5d;
-    --primary-soft: #ece8f4;
-    --primary-softer: #f5f2fa;
+    --primary: #006039;
+    --primary-hover: #004f2f;
+    --primary-pressed: #003f26;
+    --primary-soft: #d5e3db;
+    --primary-softer: #dfe8e3;
     --on-primary: #ffffff;
-    --focus-ring: rgba(86, 71, 134, 0.35);
+    --focus-ring: rgba(0, 96, 57, 0.35);
+
+    /* Solid brand fills (community cards, the greeting banner). The same green in both
+       themes: unlike --primary, it is a background, so it does not lighten in dark mode. */
+    --brand-solid: #006039;
+    --brand-solid-deep: #00472b;
+    --on-brand-solid: #ffffff;
+    --on-brand-solid-soft: rgba(255, 255, 255, 0.84);
+    --brand-solid-inset: #eef3f0;
 
     /* Status */
     --urgent: #b4532a;
@@ -41,36 +49,41 @@
     --radius-sm: 8px;
     --radius: 14px;
     --radius-lg: 20px;
-    --shadow-sm: 0 1px 2px rgba(36, 33, 43, 0.05);
-    --shadow: 0 1px 2px rgba(36, 33, 43, 0.04), 0 4px 16px rgba(36, 33, 43, 0.06);
-    --shadow-lg: 0 2px 4px rgba(36, 33, 43, 0.05), 0 12px 32px rgba(36, 33, 43, 0.10);
+    --shadow-sm: 0 1px 2px rgba(20, 40, 30, 0.05);
+    --shadow: 0 1px 2px rgba(20, 40, 30, 0.04), 0 4px 16px rgba(20, 40, 30, 0.06);
+    --shadow-lg: 0 2px 4px rgba(20, 40, 30, 0.05), 0 12px 32px rgba(20, 40, 30, 0.10);
 
-    --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+    /* The system font stack: each device's own interface font (San Francisco on Apple,
+       Segoe UI on Windows, Roboto on Android). Nothing to download, and it is what
+       people already read all day, so the app feels native rather than styled. */
+    --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-display: var(--font);
 
     color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --bg: #17151c;
-        --surface: #201d27;
-        --surface-sunken: #1b1922;
-        --border: #312c3b;
-        --border-strong: #423b4f;
+        --bg: #121815;
+        --surface: #1a221e;
+        --surface-sunken: #161d19;
+        --border: #2a352f;
+        --border-strong: #3a4840;
 
-        --text: #eeebf3;
-        --text-soft: #cdc8d6;
-        --muted: #a39dae;
+        --text: #e9efeb;
+        --text-soft: #c6d0ca;
+        --muted: #98a69e;
 
         /* Lightened so the brand color stays readable on a dark canvas. */
-        --primary: #a594dc;
-        --primary-hover: #b8aae6;
-        --primary-pressed: #cbbff0;
-        --primary-soft: #2b2540;
-        --primary-softer: #231f31;
-        --on-primary: #17151c;
-        --focus-ring: rgba(165, 148, 220, 0.4);
+        --primary: #4fb98a;
+        --primary-hover: #6ccaa0;
+        --primary-pressed: #8ad8b5;
+        --primary-soft: #18372a;
+        --primary-softer: #15281f;
+        --on-primary: #0c1410;
+        --focus-ring: rgba(79, 185, 138, 0.4);
+
+        --brand-solid-inset: #e3ebe6;
 
         --urgent: #ec9a74;
         --urgent-soft: #3a2820;
@@ -80,7 +93,7 @@
         --answered-soft: #352d1c;
         --error: #f3968b;
         --error-soft: #3a2220;
-        --on-error: #1b1922;
+        --on-error: #161d19;
 
         --shadow-sm: none;
         --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -114,7 +127,8 @@ h1, h2, h3 {
 h1 {
     font-family: var(--font-display);
     font-size: 2rem;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: -0.025em;
 }
 
 h2 {
@@ -1644,7 +1658,7 @@ a.bell.active {
     background:
         radial-gradient(circle at 85% 15%, rgba(255, 255, 255, 0.16) 0, transparent 45%),
         radial-gradient(circle at 10% 110%, rgba(255, 255, 255, 0.10) 0, transparent 40%),
-        linear-gradient(135deg, #564786 0%, #45386d 55%, #352a55 100%);
+        linear-gradient(135deg, var(--brand-solid) 0%, var(--brand-solid-deep) 100%);
     color: #fff;
     box-shadow: var(--shadow-lg);
 }
@@ -1771,11 +1785,12 @@ a.bell.active {
     display: flex;
     align-items: center;
     min-width: 0;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--brand-solid);
+    border: 1px solid transparent;
     border-radius: var(--radius);
+    color: var(--on-brand-solid);
     box-shadow: var(--shadow-sm);
-    transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+    transition: transform 0.18s, box-shadow 0.18s, background-color 0.18s;
 }
 
 /* Browsing layout: two wider columns so descriptions read in full next to Join/Leave. */
@@ -1790,12 +1805,54 @@ a.bell.active {
 
 .community-tile:hover {
     transform: translateY(-2px);
-    border-color: var(--border-strong);
+    background: var(--brand-solid-deep);
     box-shadow: var(--shadow-lg);
 }
 
-.community-tile.is-member {
-    border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+/* On a green card, text and controls are white: the card is the brand color, so the
+   controls invert (white Join, outlined Leave) to stay visible against it. */
+.community-tile .tile-description,
+.community-tile .member-count {
+    color: var(--on-brand-solid-soft);
+}
+
+.community-tile .member-count::before {
+    background: var(--on-brand-solid);
+}
+
+.community-tile .community-icon {
+    background: var(--brand-solid-inset);
+    color: var(--brand-solid);
+}
+
+.community-tile .button {
+    background: var(--brand-solid-inset);
+    border-color: var(--brand-solid-inset);
+    color: var(--brand-solid);
+    box-shadow: none;
+}
+
+.community-tile .button:hover {
+    background: var(--on-brand-solid);
+    border-color: var(--on-brand-solid);
+    color: var(--brand-solid);
+}
+
+.community-tile .button-quiet,
+.community-tile .button-quiet:hover {
+    background: transparent;
+    border-color: var(--on-brand-solid-soft);
+    color: var(--on-brand-solid);
+}
+
+.community-tile .button-quiet:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.community-tile a:focus-visible,
+.community-tile .button:focus-visible {
+    outline: 2px solid var(--on-brand-solid);
+    outline-offset: 2px;
 }
 
 .tile-main {
@@ -1852,13 +1909,13 @@ a.bell.active {
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    color: var(--muted);
+    color: var(--on-brand-solid-soft);
     transition: background-color 0.15s, color 0.15s;
 }
 
 .community-tile:hover .tile-chevron {
-    background: var(--primary-soft);
-    color: var(--primary);
+    background: rgba(255, 255, 255, 0.14);
+    color: var(--on-brand-solid);
 }
 
 .community-icon {
@@ -1878,10 +1935,6 @@ a.bell.active {
     border-radius: 16px;
 }
 
-.community-tile.is-member .community-icon {
-    background: var(--primary);
-    color: var(--on-primary);
-}
 
 /* ---- Forms ------------------------------------------------------------------- */
 
@@ -2290,4 +2343,102 @@ input[type="checkbox"] {
 
 .loading-progress-text::after {
     content: var(--blazor-load-percentage-text, "Loading");
+}
+
+/* ---- Glass --------------------------------------------------------------------
+   A glass surface is three things stacked: a see-through fill, a blur of whatever is
+   behind it (backdrop-filter), and a bright top edge that reads as light catching the
+   rim. Blur needs something to blur, so the page gets soft green glows behind
+   everything; on a flat background, glass looks identical to a plain card.
+   This whole section can be deleted to return to flat surfaces. */
+
+:root {
+    --glass: rgba(255, 255, 255, 0.5);
+    --glass-strong: rgba(255, 255, 255, 0.66);
+    --glass-border: rgba(255, 255, 255, 0.78);
+    --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    --glass-shadow: 0 10px 30px rgba(0, 50, 30, 0.1);
+    --glass-filter: blur(20px) saturate(170%);
+    --glow-a: rgba(0, 96, 57, 0.26);
+    --glow-b: rgba(96, 160, 128, 0.3);
+    --glow-c: rgba(0, 96, 57, 0.16);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --glass: rgba(36, 50, 43, 0.46);
+        --glass-strong: rgba(30, 42, 36, 0.66);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+        --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        --glow-a: rgba(0, 130, 78, 0.34);
+        --glow-b: rgba(40, 110, 84, 0.3);
+        --glow-c: rgba(0, 96, 57, 0.26);
+    }
+}
+
+/* The backdrop. Fixed, so content scrolls over it and the blur visibly shifts. The
+   body goes transparent so this layer (z-index -1) shows above the html background. */
+body {
+    background: transparent;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(55vw 55vh at 8% 4%, var(--glow-a), transparent 70%),
+        radial-gradient(45vw 50vh at 96% 22%, var(--glow-b), transparent 70%),
+        radial-gradient(60vw 45vh at 55% 104%, var(--glow-c), transparent 70%);
+}
+
+.topbar,
+.card,
+.feed-rail,
+.profile-stats div {
+    background: var(--glass);
+    border-color: var(--glass-border);
+    box-shadow: var(--glass-shadow), var(--glass-rim);
+    backdrop-filter: var(--glass-filter);
+    -webkit-backdrop-filter: var(--glass-filter);
+}
+
+/* The header and docked panel carry text over moving content, so they are less
+   see-through than cards. */
+.topbar,
+.feed-rail {
+    background: var(--glass-strong);
+}
+
+.chip,
+.button-quiet,
+.rail-toggle,
+.input,
+.composer textarea {
+    background: var(--glass-strong);
+    border-color: var(--glass-border);
+}
+
+/* Green glass: the brand color at 82-94% so the backdrop tints through, with the same
+   bright rim. Kept this opaque so white text stays above 4.5:1 contrast. */
+.community-tile,
+.community-tile:hover {
+    background: linear-gradient(135deg, rgba(0, 96, 57, 0.94), rgba(0, 96, 57, 0.82));
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 10px 28px rgba(0, 60, 36, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    backdrop-filter: var(--glass-filter);
+    -webkit-backdrop-filter: var(--glass-filter);
+}
+
+.community-tile:hover {
+    background: linear-gradient(135deg, rgba(0, 82, 49, 0.96), rgba(0, 82, 49, 0.86));
+}
+
+/* Browsers without backdrop-filter get the solid surfaces back, so text never sits on
+   a see-through panel with nothing blurring what is behind it. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .topbar, .card, .feed-rail, .profile-stats div { background: var(--surface); }
 }
