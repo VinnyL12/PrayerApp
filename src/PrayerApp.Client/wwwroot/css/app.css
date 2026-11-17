@@ -1,5 +1,5 @@
 /* =================================================================================
-   Prayer App design system
+   Seventh Haven design system
    Primary green #006039 on a soft gray-green canvas (#e8ece9). Every color is a token
    defined here, so the palette can be changed in one place.
    ================================================================================= */
@@ -2441,4 +2441,274 @@ body::before {
    a see-through panel with nothing blurring what is behind it. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .topbar, .card, .feed-rail, .profile-stats div { background: var(--surface); }
+}
+
+/* ---- Landing: the seven havens ------------------------------------------------
+   Seven columns whose heights rise in equal steps, so the row reads as a staircase up
+   to the seventh. Each column's height comes from its index (--i, 0 to 6):
+   28% + i * 12% gives 28%, 40% ... 100%. The copy is placed in the top-left, the
+   empty triangle a staircase leaves, so the layout fills the whole screen. */
+
+.page:has(.landing) {
+    max-width: none;
+    padding: 0;
+}
+
+/* The header lines up with the wider landing instead of the 1040px reading column. */
+body:has(.landing) .topbar-inner {
+    max-width: 1360px;
+    padding-inline: 2.5rem;
+}
+
+.landing {
+    --topbar-h: 4rem;
+    position: relative;
+    max-width: 1360px;
+    height: calc(100vh - var(--topbar-h));
+    min-height: 640px;
+    margin: 0 auto;
+    padding: 2.25rem 2.5rem 2rem;
+}
+
+.landing-copy {
+    position: absolute;
+    top: 2.25rem;
+    left: 2.5rem;
+    /* Three columns wide: it clears the fourth step, which is where the stairs get tall. */
+    width: calc((100% - 5rem) * 3 / 7 - 1rem);
+    z-index: 1;
+}
+
+.landing-copy h1 {
+    margin: 0 0 0.9rem;
+    font-size: clamp(2rem, 3.1vw, 2.9rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+}
+
+.landing-copy .lead {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.5;
+}
+
+.landing-copy .hero-actions {
+    justify-content: flex-start;
+    margin-top: 1.4rem;
+}
+
+.havens {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    align-items: end;
+    gap: 0.75rem;
+}
+
+.haven {
+    height: calc(28% + var(--i) * 12%);
+    animation: haven-rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    animation-delay: calc(var(--i) * 70ms);
+}
+
+@keyframes haven-rise {
+    from { opacity: 0; transform: translateY(2.5rem); }
+}
+
+.haven a {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 1rem 1rem 1.1rem;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: var(--radius-lg);
+    /* Each step is a little deeper than the last, so the color climbs with the height. */
+    background: linear-gradient(
+        180deg,
+        rgba(0, 96, 57, calc(0.84 + var(--i) * 0.02)),
+        rgba(0, 78, 46, calc(0.9 + var(--i) * 0.015)));
+    box-shadow: 0 10px 28px rgba(0, 60, 36, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    backdrop-filter: var(--glass-filter);
+    -webkit-backdrop-filter: var(--glass-filter);
+    color: var(--on-brand-solid);
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.haven a:hover {
+    color: var(--on-brand-solid);
+    transform: translateY(-6px);
+    box-shadow: 0 18px 36px rgba(0, 60, 36, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+
+.haven a:focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: 3px;
+}
+
+/* The numeral grows with the step: 1 is modest, 7 is the largest thing on the page. */
+.haven-number {
+    font-size: calc(2.1rem + var(--i) * 0.5rem);
+    font-weight: 700;
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+    color: rgba(255, 255, 255, calc(0.5 + var(--i) * 0.08));
+}
+
+.haven-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.haven-name {
+    font-size: 0.98rem;
+    font-weight: 650;
+    line-height: 1.25;
+}
+
+.haven-blurb {
+    color: var(--on-brand-solid-soft);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+/* Signed-in home: the same staircase, with a greeting, stats and live member counts. */
+.landing-greeting {
+    margin: 0 0 0.35rem;
+    color: var(--primary);
+    font-size: 0.98rem;
+    font-weight: 600;
+}
+
+.haven-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 1.3rem 0 0;
+}
+
+.haven-stats div {
+    min-width: 5.5rem;
+    padding: 0.6rem 0.9rem 0.65rem;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    background: var(--glass);
+    box-shadow: var(--glass-shadow), var(--glass-rim);
+    backdrop-filter: var(--glass-filter);
+    -webkit-backdrop-filter: var(--glass-filter);
+}
+
+.haven-stats dt {
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+.haven-stats dd {
+    margin: 0;
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+.haven-meta {
+    margin-top: 0.2rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--on-brand-solid-soft);
+}
+
+.landing-status {
+    position: absolute;
+    bottom: 2rem;
+    left: 2.5rem;
+}
+
+/* A community you haven't joined: clear glass instead of green, so the steps you
+   belong to stand out and the rest read as open doors. */
+.haven-open a,
+.haven-open a:hover {
+    border-color: var(--glass-border);
+    background: var(--glass);
+    box-shadow: var(--glass-shadow), var(--glass-rim);
+    color: var(--text);
+}
+
+.haven-open .haven-number {
+    color: var(--primary);
+    opacity: 0.45;
+}
+
+.haven-open .haven-blurb {
+    color: var(--text-soft);
+}
+
+.haven-open .haven-meta {
+    color: var(--primary);
+}
+
+/* Narrow desktop: columns are too slim for a sentence, so the names stand alone. */
+@media (max-width: 1100px) {
+    .haven-blurb { display: none; }
+}
+
+/* Phone and tablet: the staircase turns on its side. Rows stack in order and grow wider
+   with each step, so the seventh still ends up the biggest. */
+@media (max-width: 900px) {
+    body:has(.landing) .topbar-inner { padding-inline: 1rem; }
+
+    .landing {
+        height: auto;
+        min-height: 0;
+        padding: 1.75rem 1rem 2.5rem;
+    }
+
+    .landing-copy {
+        position: static;
+        width: auto;
+        margin-bottom: 1.75rem;
+    }
+
+    .havens {
+        height: auto;
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+    }
+
+    .haven {
+        height: auto;
+        width: calc(64% + var(--i) * 6%);
+    }
+
+    .haven a {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.9rem;
+        padding: 0.85rem 1rem;
+        border-radius: var(--radius);
+    }
+
+    .haven-number {
+        flex: none;
+        width: 2rem;
+        font-size: 1.9rem;
+        text-align: center;
+    }
+
+    .haven-blurb { display: block; }
+    .landing-status { position: static; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .haven { animation: none; }
+    .haven a { transition: none; }
 }

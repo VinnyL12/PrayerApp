@@ -1,8 +1,12 @@
-# Prayer App
+# Seventh Haven
 
 A cross-faith prayer and support app. People join topical communities, share what they're
 carrying, and others respond with a small set of preset responses. Authors post updates so
-the people who prayed hear how it turned out, and admins keep the space safe.
+the people who responded hear how it turned out, and admins keep the space safe.
+
+The name comes from its seven communities, the seven havens, with a nod to "seventh heaven".
+The short form is 7Haven. (The code, projects and repository keep the working name
+`PrayerApp`.)
 
 ![A community page: the community and composer docked on the left, the ranked feed on the right](docs/screenshots/community.jpg)
 
@@ -11,8 +15,11 @@ ASP.NET Core Identity + JWT · xUnit + Testcontainers · GitHub Actions
 
 ## What it does
 
-- **Communities and a ranked feed.** Seven topical communities. Each feed balances recency,
-  the last 24 hours of support, and urgency, and pages through with Load more.
+- **Seven havens.** Seven topical communities, shown on the home page as seven numbered
+  steps that rise to the seventh. The ones you've joined are green; the rest are clear
+  glass.
+- **A ranked feed.** Each community's feed balances recency, the last 24 hours of support,
+  and urgency, and pages through with Load more.
 - **Posts with a photo and a link.** Optional anonymity, an urgent flag that stands out
   gently for 48 hours, one photo, and one https link (a fundraiser or Cash App) labeled by
   platform with its real domain shown.
@@ -88,7 +95,28 @@ shows and a request the API accepts can't disagree. `PrayerApp.Domain` holds ent
 pure logic such as the ranker, with no EF Core or web dependencies, so it's unit-tested in
 isolation.
 
+## Interface
+
+- **Green on soft gray.** Brand green `#006039` on `#E8ECE9`, with a lightened green for
+  links and buttons in dark mode. Every color is a CSS custom property with a light and a
+  dark value, in one stylesheet:
+  [`app.css`](src/PrayerApp.Client/wwwroot/css/app.css).
+- **Glass surfaces.** The header, the docked community panel and cards are translucent with
+  a backdrop blur and a lit top edge, over fixed green glows so the blur has something to
+  work on. Browsers without `backdrop-filter` fall back to solid surfaces.
+- **System fonts.** Text uses each device's own interface font, so there is nothing to
+  download and the app feels native.
+- **The seven-step home page.** One CSS rule sets each step's height from its position
+  (`28% + i × 12%`), and the greeting sits in the space the staircase leaves at the top
+  left. Signed-out visitors get the same layout as the landing page. On a phone the
+  staircase turns on its side: rows that widen with each step. The entrance animation is
+  skipped for people who ask their device to reduce motion.
+- **No component library.** Plain Razor components and hand-written CSS.
+
 ## Screenshots
+
+> These were taken before the Seventh Haven rebrand and still show the earlier purple
+> design and name. The layouts of these screens are unchanged.
 
 | Post with updates | Moderation queue |
 |---|---|

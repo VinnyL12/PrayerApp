@@ -1,104 +1,118 @@
 @page "/"
 @inject PrayerApiClient Api
 
-<PageTitle>Prayer App</PageTitle>
+<PageTitle>Seventh Haven</PageTitle>
 
 <AuthorizeView>
     <Authorized>
-        <section class="welcome">
-            <div class="welcome-text">
-                <p class="welcome-eyebrow">@Greeting()</p>
-                <h1>@FirstName(context.User.Identity?.Name)</h1>
-                <p>Thank you for showing up for each other today.</p>
+        @* Signed in: the same seven-step staircase as the landing page, now live. Every
+           community is a step; the ones you haven't joined are shown as clear glass. *@
+        <section class="landing landing-home">
+            <div class="landing-copy">
+                <p class="landing-greeting">@Greeting(), @FirstName(context.User.Identity?.Name)</p>
+                <h1>Your seven havens.</h1>
+                <p class="lead">Thank you for showing up for each other today.</p>
+
+                <dl class="haven-stats">
+                    <div>
+                        <dt>Joined</dt>
+                        <dd>@(_communities is null ? "–" : $"{_communities.Count(c => c.IsMember)} of {_communities.Count}")</dd>
+                    </div>
+                    <div>
+                        <dt>Posts</dt>
+                        <dd>@(_myPosts?.Count.ToString() ?? "–")</dd>
+                    </div>
+                    <div>
+                        <dt>Responses</dt>
+                        <dd>@(_myPosts?.Sum(p => p.AcknowledgmentCount).ToString() ?? "–")</dd>
+                    </div>
+                </dl>
             </div>
 
-            <dl class="welcome-stats">
-                <div>
-                    <dt>Communities</dt>
-                    <dd>@(_communities?.Count.ToString() ?? "–")</dd>
-                </div>
-                <div>
-                    <dt>Posts</dt>
-                    <dd>@(_myPosts?.Count.ToString() ?? "–")</dd>
-                </div>
-                <div>
-                    <dt>Responses</dt>
-                    <dd>@(_myPosts?.Sum(p => p.AcknowledgmentCount).ToString() ?? "–")</dd>
-                </div>
-            </dl>
+            @if (_communities is null)
+            {
+                <p class="muted landing-status">@(_error ?? "Loading…")</p>
+            }
+            else
+            {
+                <ol class="havens" aria-label="Communities">
+                    @for (var i = 0; i < _communities.Count; i++)
+                    {
+                        var community = _communities[i];
+                        <li @key="community.Id" class="haven @(community.IsMember ? "" : "haven-open")" style="--i: @i">
+                            <a href="/communities/@community.Id">
+                                <span class="haven-number" aria-hidden="true">@(i + 1)</span>
+                                <span class="haven-body">
+                                    <span class="haven-name">@community.Name</span>
+                                    <span class="haven-blurb">@community.Description</span>
+                                    <span class="haven-meta">
+                                        @if (community.IsMember)
+                                        {
+                                            @community.MemberCount @(community.MemberCount == 1 ? "member" : "members")
+                                        }
+                                        else
+                                        {
+                                            <text>Not joined yet</text>
+                                        }
+                                    </span>
+                                </span>
+                            </a>
+                        </li>
+                    }
+                </ol>
+            }
         </section>
-
-        <header class="section-header">
-            <div>
-                <h2>Your communities</h2>
-                <p>Where you share and support.</p>
-            </div>
-            <a class="button button-quiet button-small" href="/communities">Browse all</a>
-        </header>
-
-        @if (_communities is null)
-        {
-            <p class="muted">@(_error ?? "Loading…")</p>
-        }
-        else if (_communities.Count == 0)
-        {
-            <div class="card empty">
-                <p>You haven't joined any communities yet.</p>
-                <a class="button" href="/communities">Browse communities</a>
-            </div>
-        }
-        else
-        {
-            <div class="tile-grid">
-                @foreach (var community in _communities)
-                {
-                    <CommunityTile @key="community.Id" Community="community" />
-                }
-            </div>
-        }
     </Authorized>
     <NotAuthorized>
-        <section class="hero">
-            <span class="eyebrow">Open to every faith</span>
-            <h1>Ask for support. Offer it back.</h1>
-            <p class="lead">
-                Prayer App is a small, private place to share what you're carrying and let others
-                know you're not alone.
-            </p>
-            <div class="hero-actions">
-                <a class="button" href="/register">Create an account</a>
-                <a class="button button-quiet" href="/login">Sign in</a>
+        @* The landing page is built on the name: seven communities, drawn as seven steps
+           that rise to the seventh. The headline sits in the open space above the short ones. *@
+        <section class="landing">
+            <div class="landing-copy">
+                <h1>Seven havens.<br />One for whatever you're carrying.</h1>
+                <p class="lead">
+                    A small, private place to share what's on your heart. People answer with a few
+                    kind words, never comments. Open to every faith.
+                </p>
+                <div class="hero-actions">
+                    <a class="button" href="/register">Create an account</a>
+                    <a class="button button-quiet" href="/login">Sign in</a>
+                </div>
             </div>
-        </section>
 
-        <section class="features" aria-label="How it works">
-            <div class="card feature">
-                <div class="feature-icon" aria-hidden="true">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5" /><circle cx="17" cy="9" r="2.5" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 14.3c.6-.2 1.3-.3 2-.3 2.8 0 5 2.2 5 5" /></svg>
-                </div>
-                <h2>Join communities</h2>
-                <p>Grief, health, family, work and more. You only see posts from the communities you join.</p>
-            </div>
-            <div class="card feature">
-                <div class="feature-icon" aria-hidden="true">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8Z" /></svg>
-                </div>
-                <h2>Kind by design</h2>
-                <p>People respond with a few gentle words that fit the moment. There are no comments, so there's no room for negativity.</p>
-            </div>
-            <div class="card feature">
-                <div class="feature-icon" aria-hidden="true">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
-                </div>
-                <h2>Private when you need it</h2>
-                <p>Post anonymously any time. You'll see how many people responded, but never who.</p>
-            </div>
+            <ol class="havens" aria-label="The seven communities">
+                @for (var i = 0; i < Havens.Length; i++)
+                {
+                    var haven = Havens[i];
+                    <li class="haven" style="--i: @i">
+                        <a href="/register" aria-label="@haven.Name: @haven.Blurb Create an account to join.">
+                            <span class="haven-number" aria-hidden="true">@(i + 1)</span>
+                            <span class="haven-body">
+                                <span class="haven-name">@haven.Name</span>
+                                <span class="haven-blurb">@haven.Blurb</span>
+                            </span>
+                        </a>
+                    </li>
+                }
+            </ol>
         </section>
     </NotAuthorized>
 </AuthorizeView>
 
 @code {
     [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    // The seven communities, as the API seeds them. Listed here so a signed-out visitor
+    // sees them instantly, without an API call (the communities endpoint needs sign-in).
+    private static readonly (string Name, string Blurb)[] Havens =
+    [
+        ("General", "Anything on your heart that doesn't fit elsewhere."),
+        ("Health & Healing", "Illness, recovery, surgery, and caring for someone who is unwell."),
+        ("Grief & Loss", "Losing someone or something, and learning to carry it."),
+        ("Family & Relationships", "Marriage, parenting, family strain, and friendships."),
+        ("Work & Finances", "Job searches, money pressure, and decisions about work."),
+        ("Mental & Emotional Wellbeing", "Anxiety, depression, loneliness, and stress."),
+        ("Gratitude & Answered Prayers", "Share what went right and give thanks."),
+    ];
 
     private List<CommunityDto>? _communities;
     private List<PostDto>? _myPosts;
@@ -117,7 +131,8 @@
         await Task.WhenAll(communitiesTask, postsTask);
 
         var communities = await communitiesTask;
-        _communities = communities.Value?.Where(c => c.IsMember).ToList();
+        // All of them, in a fixed order, so each community keeps its step number.
+        _communities = communities.Value?.OrderBy(c => c.Id).ToList();
         _myPosts = (await postsTask).Value;
         _error = communities.Error;
     }
