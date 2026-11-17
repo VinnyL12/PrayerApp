@@ -48,7 +48,7 @@
                                     <span class="haven-meta">
                                         @if (community.IsMember)
                                         {
-                                            @community.MemberCount @(community.MemberCount == 1 ? "member" : "members")
+                                            @($"{community.MemberCount} {(community.MemberCount == 1 ? "member" : "members")}")
                                         }
                                         else
                                         {

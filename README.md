@@ -8,7 +8,7 @@ The name comes from its seven communities, the seven havens, with a nod to "seve
 The short form is 7Haven. (The code, projects and repository keep the working name
 `PrayerApp`.)
 
-![A community page: the community and composer docked on the left, the ranked feed on the right](docs/screenshots/community.jpg)
+![The home page: seven numbered pillars rising like a staircase, green for the communities you have joined and clear glass for the rest](docs/screenshots/home.jpg)
 
 **Stack:** ASP.NET Core 10 minimal APIs · Blazor WebAssembly · EF Core · SQL Server 2025 ·
 ASP.NET Core Identity + JWT · xUnit + Testcontainers · GitHub Actions
@@ -115,8 +115,7 @@ isolation.
 
 ## Screenshots
 
-> These were taken before the Seventh Haven rebrand and still show the earlier purple
-> design and name. The layouts of these screens are unchanged.
+![A community page: the community and composer docked on the left, the ranked feed on the right](docs/screenshots/community.jpg)
 
 | Post with updates | Moderation queue |
 |---|---|
