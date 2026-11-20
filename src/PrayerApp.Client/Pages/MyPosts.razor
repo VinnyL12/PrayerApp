@@ -24,10 +24,10 @@
 }
 else if (_posts.Count == 0)
 {
-    <div class="card empty">
-        <p>You haven't posted yet.</p>
-        <a class="button" href="/communities">Find a community</a>
-    </div>
+    <EmptyState Title="Nothing shared yet">
+        <ChildContent>When you post in one of the seven, it shows up here with the responses it gets.</ChildContent>
+        <Actions><a class="button" href="/communities">Find a community</a></Actions>
+    </EmptyState>
 }
 else
 {
@@ -46,9 +46,7 @@ else
 
     @if (Visible.Count == 0)
     {
-        <div class="card empty">
-            <p>@EmptyMessage(_tab)</p>
-        </div>
+        <EmptyState ShowMark="false">@EmptyMessage(_tab)</EmptyState>
     }
     else
     {

@@ -1,0 +1,12 @@
+@* The seven-step staircase from the home page, shrunk to a mark: six pale pillars and
+   the seventh in solid green. Decorative, so screen readers skip it. *@
+<span class="steps-mark @(Large ? "steps-mark-lg" : "")" aria-hidden="true">
+    @for (var i = 0; i < 7; i++)
+    {
+        <span style="--i:@i"></span>
+    }
+</span>
+
+@code {
+    [Parameter] public bool Large { get; set; }
+}

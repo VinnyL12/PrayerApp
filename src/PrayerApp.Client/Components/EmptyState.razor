@@ -1,0 +1,27 @@
+@* What a page shows when it has nothing to list: the staircase mark, a short title and
+   one calm line, with an optional action. Like a React component taking children and
+   an "actions" slot: ChildContent and Actions are RenderFragments. *@
+<div class="card empty">
+    @if (ShowMark)
+    {
+        <StepsMark />
+    }
+    @if (Title is not null)
+    {
+        <h2 class="empty-title">@Title</h2>
+    }
+    <p>@ChildContent</p>
+    @if (Actions is not null)
+    {
+        <div class="empty-actions">@Actions</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    /// <summary>Off for search results, where "no matches" is routine, not a moment.</summary>
+    [Parameter] public bool ShowMark { get; set; } = true;
+}

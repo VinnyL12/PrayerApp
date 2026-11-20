@@ -74,9 +74,9 @@ else
         <section class="feed-column" aria-label="Posts">
             @if (!_community.IsMember)
             {
-                <div class="card empty">
-                    <p>Join this community to read and share prayer requests.</p>
-                </div>
+                <EmptyState Title="Members only">
+                    Posts in @_community.Name are visible to its members. Join to read and share.
+                </EmptyState>
             }
             else
             {
@@ -87,9 +87,9 @@ else
 
                 @if (_posts.Count == 0 && !_loading)
                 {
-                    <div class="card empty">
-                        <p>No posts yet. Be the first to share.</p>
-                    </div>
+                    <EmptyState Title="Quiet for now">
+                        No one has posted in @_community.Name yet. Share what's on your heart and you'll be the first.
+                    </EmptyState>
                 }
 
                 @foreach (var post in _posts)
