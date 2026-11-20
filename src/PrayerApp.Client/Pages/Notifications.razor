@@ -34,20 +34,24 @@ else if (_groups.Count == 0)
 }
 else
 {
-    <ul class="notifications">
-        @foreach (var group in _groups)
-        {
-            <li @key="(group.PostId, group.Type)">
-                <button class="card notification @(group.UnreadCount > 0 ? "unread" : "")" @onclick="() => OpenAsync(group)">
-                    <span>
-                        @Headline(group)
-                        <span class="notification-excerpt">“@group.Excerpt”</span>
-                    </span>
-                    <span class="muted small time">@TimeFormat.Ago(group.Latest, Time.GetUtcNow())</span>
-                </button>
-            </li>
-        }
-    </ul>
+    @foreach (var day in _groups.GroupBy(g => DayLabel(g.Latest)))
+    {
+        <h2 class="notification-day">@day.Key</h2>
+        <ul class="notifications">
+            @foreach (var group in day)
+            {
+                <li @key="(group.PostId, group.Type)">
+                    <button class="card notification @(group.UnreadCount > 0 ? "unread" : "")" @onclick="() => OpenAsync(group)">
+                        <span class="notification-body">
+                            @Headline(group)
+                            <span class="notification-excerpt">@Quoted(group.Excerpt)</span>
+                        </span>
+                        <span class="muted small time">@TimeFormat.Ago(group.Latest, Time.GetUtcNow())</span>
+                    </button>
+                </li>
+            }
+        </ul>
+    }
 }
 </div>
 
@@ -84,6 +88,43 @@ else
                 g.ToList()))
             .OrderByDescending(g => g.Latest)
             .ToList();
+    }
+
+    // Buckets for the day headers. Groups are already newest-first, so GroupBy (which
+    // keeps first-seen order, like lodash groupBy over a sorted array) yields the
+    // buckets in order too. Days are the reader's local calendar days.
+    private string DayLabel(DateTimeOffset time)
+    {
+        var today = DateOnly.FromDateTime(Time.GetLocalNow().DateTime);
+        var day = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(time, Time.LocalTimeZone).DateTime);
+        var daysAgo = today.DayNumber - day.DayNumber;
+        return daysAgo switch
+        {
+            <= 0 => "Today",
+            1 => "Yesterday",
+            < 7 => "Earlier this week",
+            _ => "Earlier",
+        };
+    }
+
+    // The API cuts long bodies at 80 characters and adds "…". Put the closing quote on
+    // the person's own words and the ellipsis after it, and back up to a word boundary
+    // so a word isn't sliced in half: “Please pray for my mom's surgery on”…
+    private static string Quoted(string excerpt)
+    {
+        if (!excerpt.EndsWith('…'))
+        {
+            return $"“{excerpt}”";
+        }
+
+        var text = excerpt[..^1].TrimEnd();
+        var lastSpace = text.LastIndexOf(' ');
+        if (lastSpace > text.Length / 2)
+        {
+            text = text[..lastSpace].TrimEnd(' ', ',', ';', ':', '.', '-', '–', '—');
+        }
+
+        return $"“{text}”…";
     }
 
     private static string Headline(NotificationGroup group)

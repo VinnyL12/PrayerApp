@@ -1540,7 +1540,7 @@ input[type="file"]:focus-visible + label.attach-button {
 .notifications {
     list-style: none;
     padding: 0;
-    margin: 1rem 0;
+    margin: 0;
 }
 
 .notification {
@@ -1581,14 +1581,36 @@ input[type="file"]:focus-visible + label.attach-button {
     font-weight: 600;
 }
 
-.notification.unread::before {
+/* Every row reserves the dot's slot, so the text column starts at the same x on read
+   and unread rows; read rows just leave the slot empty. */
+.notification::before {
     content: "";
     flex: none;
     width: 8px;
     height: 8px;
     margin-top: 0.5rem;
+    margin-right: -0.4rem;
     border-radius: 50%;
+}
+
+.notification.unread::before {
     background: var(--primary);
+}
+
+.notification-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-day {
+    margin: 1.4rem 0 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.page-header + .notification-day {
+    margin-top: 0.5rem;
 }
 
 .badge {
@@ -1624,9 +1646,10 @@ a.bell:hover {
     color: var(--primary);
 }
 
+/* Same quiet tint as the active nav links, so the bell doesn't outshout the page. */
 a.bell.active {
-    background: var(--primary);
-    color: var(--on-primary);
+    background: var(--primary-soft);
+    color: var(--primary);
 }
 
 .bell .badge {
