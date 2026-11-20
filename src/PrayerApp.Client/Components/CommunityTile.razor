@@ -1,8 +1,7 @@
-@* A compact, horizontal community card: icon | name, one-line description, members | action.
+@* A compact, horizontal community card: name, one-line description, members | action.
    Fixed height regardless of text length, so a grid of them stays even and fits on one screen. *@
 <article class="community-tile @(Community.IsMember ? "is-member" : "")">
     <a class="tile-main" href="/communities/@Community.Id" aria-label="Open @Community.Name">
-        <CommunityIcon Category="Community.Category" />
         <span class="tile-text">
             <span class="tile-name">@Community.Name</span>
             <span class="tile-description">@Community.Description</span>

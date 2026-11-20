@@ -574,8 +574,6 @@ a.post-link:hover {
     color: var(--muted);
     font-size: 0.72rem;
     font-weight: 650;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
 }
 
 .tag-answered { background: var(--answered-soft); color: var(--answered); }
@@ -961,12 +959,6 @@ input[type="file"]:focus-visible + label.attach-button {
     height: 2.25rem;
 }
 
-.feed-rail .community-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 9px;
-}
-
 /* The community's name, running down the strip. */
 .rail-name {
     writing-mode: vertical-rl;
@@ -1116,8 +1108,6 @@ input[type="file"]:focus-visible + label.attach-button {
     color: var(--muted);
     font-size: 0.72rem;
     font-weight: 650;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
 }
 
 /* Content pages inside the profile keep their own readable width, left-aligned. */
@@ -1665,98 +1655,6 @@ a.bell.active {
     box-shadow: 0 0 0 2px var(--bg);
 }
 
-/* ---- Welcome banner (signed-in home) ----------------------------------------- */
-
-.welcome {
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 1.25rem 2rem;
-    margin-bottom: 1.75rem;
-    padding: 1.6rem 2rem;
-    border-radius: var(--radius-lg);
-    background:
-        radial-gradient(circle at 85% 15%, rgba(255, 255, 255, 0.16) 0, transparent 45%),
-        radial-gradient(circle at 10% 110%, rgba(255, 255, 255, 0.10) 0, transparent 40%),
-        linear-gradient(135deg, var(--brand-solid) 0%, var(--brand-solid-deep) 100%);
-    color: #fff;
-    box-shadow: var(--shadow-lg);
-}
-
-.welcome h1 {
-    margin: 0 0 0.2rem;
-    color: #fff;
-    font-size: clamp(1.9rem, 4vw, 2.4rem);
-}
-
-.welcome p {
-    margin: 0;
-    color: rgba(255, 255, 255, 0.82);
-}
-
-.welcome-eyebrow {
-    font-size: 0.82rem;
-    font-weight: 650;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-}
-
-.welcome-stats {
-    display: flex;
-    gap: 0.75rem;
-    margin: 0;
-}
-
-.welcome-stats div {
-    min-width: 7rem;
-    padding: 0.65rem 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: var(--radius);
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(6px);
-}
-
-.welcome-stats dt {
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.75);
-}
-
-.welcome-stats dd {
-    margin: 0.1rem 0 0;
-    font-family: var(--font-display);
-    font-size: 1.65rem;
-    font-weight: 600;
-    line-height: 1.1;
-    font-variant-numeric: tabular-nums;
-}
-
-.section-header {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 0.9rem;
-}
-
-.section-header h2 {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: 1.35rem;
-    font-weight: 600;
-}
-
-.section-header p {
-    margin: 0.15rem 0 0;
-    color: var(--muted);
-    font-size: 0.93rem;
-}
-
 /* ---- Page hero (communities) ------------------------------------------------- */
 
 .page-hero {
@@ -1841,11 +1739,6 @@ a.bell.active {
 
 .community-tile .member-count::before {
     background: var(--on-brand-solid);
-}
-
-.community-tile .community-icon {
-    background: var(--brand-solid-inset);
-    color: var(--brand-solid);
 }
 
 .community-tile .button {
@@ -1941,22 +1834,6 @@ a.bell.active {
     color: var(--on-brand-solid);
 }
 
-.community-icon {
-    width: 48px;
-    height: 48px;
-    flex: none;
-    display: grid;
-    place-items: center;
-    border-radius: 12px;
-    background: var(--primary-soft);
-    color: var(--primary);
-}
-
-.community-icon-lg {
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
-}
 
 
 /* ---- Forms ------------------------------------------------------------------- */
@@ -2218,8 +2095,6 @@ input[type="checkbox"] {
     color: var(--primary);
     font-size: 0.8rem;
     font-weight: 650;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
 }
 
 .hero h1 {
@@ -2289,12 +2164,6 @@ input[type="checkbox"] {
 
 @media (max-width: 640px) {
     .community-tile, .tile-grid-2 .community-tile { flex-basis: 100%; }
-    .welcome { padding: 1.75rem 1.5rem; gap: 1.5rem; }
-    .welcome-stats { width: 100%; }
-    .welcome-stats div { flex: 1; min-width: 0; padding: 0.75rem; }
-    .welcome-stats dd { font-size: 1.6rem; }
-    .welcome-stats dt { font-size: 0.66rem; letter-spacing: 0.02em; }
-    .community-icon-lg { display: none; }
     h1 { font-size: 1.65rem; }
     .page { padding-top: 1.5rem; }
     .topbar-inner { padding: 0.6rem 1rem; gap: 0.5rem 0.75rem; }
