@@ -59,46 +59,47 @@
     --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-display: var(--font);
 
-    color-scheme: light dark;
+    color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg: #121815;
-        --surface: #1a221e;
-        --surface-sunken: #161d19;
-        --border: #2a352f;
-        --border-strong: #3a4840;
+/* Dark is the default theme. Light applies only when the reader picks it with the
+   header toggle, which sets data-theme="light" on <html> (see index.html). */
+:root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121815;
+    --surface: #1a221e;
+    --surface-sunken: #161d19;
+    --border: #2a352f;
+    --border-strong: #3a4840;
 
-        --text: #e9efeb;
-        --text-soft: #c6d0ca;
-        --muted: #98a69e;
+    --text: #e9efeb;
+    --text-soft: #c6d0ca;
+    --muted: #98a69e;
 
-        /* Lightened so the brand color stays readable on a dark canvas. */
-        --primary: #4fb98a;
-        --primary-hover: #6ccaa0;
-        --primary-pressed: #8ad8b5;
-        --primary-soft: #18372a;
-        --primary-softer: #15281f;
-        --on-primary: #0c1410;
-        --focus-ring: rgba(79, 185, 138, 0.4);
+    /* Lightened so the brand color stays readable on a dark canvas. */
+    --primary: #4fb98a;
+    --primary-hover: #6ccaa0;
+    --primary-pressed: #8ad8b5;
+    --primary-soft: #18372a;
+    --primary-softer: #15281f;
+    --on-primary: #0c1410;
+    --focus-ring: rgba(79, 185, 138, 0.4);
 
-        --brand-solid-inset: #e3ebe6;
+    --brand-solid-inset: #e3ebe6;
 
-        --urgent: #ec9a74;
-        --urgent-soft: #3a2820;
-        --urgent-wash: #2a2125;
-        --urgent-border: #4a3631;
-        --answered: #e2c27a;
-        --answered-soft: #352d1c;
-        --error: #f3968b;
-        --error-soft: #3a2220;
-        --on-error: #161d19;
+    --urgent: #ec9a74;
+    --urgent-soft: #3a2820;
+    --urgent-wash: #2a2125;
+    --urgent-border: #4a3631;
+    --answered: #e2c27a;
+    --answered-soft: #352d1c;
+    --error: #f3968b;
+    --error-soft: #3a2220;
+    --on-error: #161d19;
 
-        --shadow-sm: none;
-        --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-        --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.4);
-    }
+    --shadow-sm: none;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.4);
 }
 
 /* ---- Base -------------------------------------------------------------------- */
@@ -2418,17 +2419,15 @@ input[type="checkbox"] {
     --glow-c: rgba(0, 96, 57, 0.16);
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --glass: rgba(36, 50, 43, 0.46);
-        --glass-strong: rgba(30, 42, 36, 0.66);
-        --glass-border: rgba(255, 255, 255, 0.1);
-        --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.14);
-        --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-        --glow-a: rgba(0, 130, 78, 0.34);
-        --glow-b: rgba(40, 110, 84, 0.3);
-        --glow-c: rgba(0, 96, 57, 0.26);
-    }
+:root:not([data-theme="light"]) {
+    --glass: rgba(36, 50, 43, 0.46);
+    --glass-strong: rgba(30, 42, 36, 0.66);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --glow-a: rgba(0, 130, 78, 0.34);
+    --glow-b: rgba(40, 110, 84, 0.3);
+    --glow-c: rgba(0, 96, 57, 0.26);
 }
 
 /* The backdrop. Fixed, so content scrolls over it and the blur visibly shifts. The
@@ -2765,4 +2764,26 @@ body:has(.landing) .topbar-inner {
 @media (prefers-reduced-motion: reduce) {
     .haven { animation: none; }
     .haven a { transition: none; }
+}
+
+/* ---- Theme toggle -------------------------------------------------------------
+   Sun in the dark theme, moon in the light one: the icon shows where a click takes you. */
+
+.theme-toggle {
+    width: 40px;
+    height: 40px;
+    display: inline-grid;
+    place-items: center;
+    margin-left: -0.75rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.theme-toggle:hover {
+    background: var(--primary-soft);
+    color: var(--primary);
 }

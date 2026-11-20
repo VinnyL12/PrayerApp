@@ -16,6 +16,19 @@
     <link rel="apple-touch-icon" href="icon-192.png" />
     <link rel="preload" id="webassembly" />
     <link rel="stylesheet" href="css/app.css" />
+    <script>
+        // Runs before the first paint, so a reader who chose light never sees a dark flash.
+        // Dark is the default; only an explicit "light" choice is stored and applied.
+        window.theme = {
+            get: function () { return document.documentElement.dataset.theme === "light" ? "light" : "dark"; },
+            set: function (value) {
+                if (value === "light") document.documentElement.dataset.theme = "light";
+                else delete document.documentElement.dataset.theme;
+                try { localStorage.setItem("theme", value); } catch (e) { }
+            }
+        };
+        try { if (localStorage.getItem("theme") === "light") document.documentElement.dataset.theme = "light"; } catch (e) { }
+    </script>
     <!-- If you add any scoped CSS files, uncomment the following to load them
     <link href="PrayerApp.Client.styles.css" rel="stylesheet" /> -->
     <script type="importmap"></script>
