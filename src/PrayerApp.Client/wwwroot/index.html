@@ -5,8 +5,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Seventh Haven</title>
+    <meta name="description" content="Seventh Haven: seven communities for whatever you're carrying. Share what's on your heart, anonymously if you like, and let people respond." />
     <meta name="theme-color" content="#006039" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Seventh Haven" />
+    <meta property="og:title" content="Seventh Haven" />
+    <meta property="og:description" content="Seven communities for whatever you're carrying. Share what's on your heart, anonymously if you like, and let people respond." />
     <base href="/" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
     <link rel="preload" id="webassembly" />
     <link rel="stylesheet" href="css/app.css" />
     <!-- If you add any scoped CSS files, uncomment the following to load them
@@ -16,17 +23,25 @@
 
 <body>
     <div id="app">
-        <svg class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text"></div>
+        <!-- Shown until Blazor renders. Seven pillars, like the home page, filling with
+             green left to right as the app downloads (--blazor-load-percentage). -->
+        <div class="boot" role="status" aria-label="Loading Seventh Haven">
+            <div class="boot-steps" aria-hidden="true">
+                <div class="boot-row">
+                    <span style="--i:0"></span><span style="--i:1"></span><span style="--i:2"></span><span style="--i:3"></span><span style="--i:4"></span><span style="--i:5"></span><span style="--i:6"></span>
+                </div>
+                <div class="boot-row boot-fill">
+                    <span style="--i:0"></span><span style="--i:1"></span><span style="--i:2"></span><span style="--i:3"></span><span style="--i:4"></span><span style="--i:5"></span><span style="--i:6"></span>
+                </div>
+            </div>
+            <p class="boot-name">Seventh Haven</p>
+        </div>
     </div>
 
-    <div id="blazor-error-ui">
-        An unhandled error has occurred.
+    <div id="blazor-error-ui" role="alert">
+        <span>Something went wrong. Reloading the page usually fixes it.</span>
         <a href="." class="reload">Reload</a>
-        <span class="dismiss">🗙</span>
+        <button type="button" class="dismiss" aria-label="Dismiss">&times;</button>
     </div>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
 </body>

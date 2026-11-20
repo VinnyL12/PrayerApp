@@ -2310,62 +2310,102 @@ input[type="checkbox"] {
 
 /* ---- Blazor framework UI ----------------------------------------------------- */
 
+/* Shown by Blazor (display: block) when an unhandled exception reaches the UI. */
 #blazor-error-ui {
-    color-scheme: light only;
-    background: #fff4d6;
-    bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
-    box-sizing: border-box;
     display: none;
-    left: 0;
-    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
     position: fixed;
-    width: 100%;
+    left: 50%;
+    bottom: 1rem;
     z-index: 1000;
-    color: #24212b;
+    width: min(36rem, calc(100% - 2rem));
+    transform: translateX(-50%);
+    padding: 0.75rem 3rem 0.75rem 1.1rem;
+    border: 1px solid var(--urgent-border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-lg);
+    color: var(--text);
+    font-size: 0.92rem;
+}
+
+#blazor-error-ui .reload {
+    margin-left: 0.4rem;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 #blazor-error-ui .dismiss {
-    cursor: pointer;
     position: absolute;
-    right: 0.75rem;
-    top: 0.5rem;
-}
-
-.loading-progress {
-    position: absolute;
-    display: block;
-    width: 6rem;
-    height: 6rem;
-    inset: 22vh 0 auto 0;
-    margin: 0 auto;
-}
-
-.loading-progress circle {
-    fill: none;
-    stroke: var(--border);
-    stroke-width: 0.5rem;
-    transform-origin: 50% 50%;
-    transform: rotate(-90deg);
-}
-
-.loading-progress circle:last-child {
-    stroke: var(--primary);
-    stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
-    transition: stroke-dasharray 0.05s ease-in-out;
-}
-
-.loading-progress-text {
-    position: absolute;
-    text-align: center;
+    top: 50%;
+    right: 0.6rem;
+    width: 2rem;
+    height: 2rem;
+    transform: translateY(-50%);
+    border: none;
+    border-radius: 999px;
+    background: transparent;
     color: var(--muted);
-    font-size: 0.85rem;
-    font-weight: 600;
-    inset: calc(22vh + 2.6rem) 0 auto 0.2rem;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
 }
 
-.loading-progress-text::after {
-    content: var(--blazor-load-percentage-text, "Loading");
+#blazor-error-ui .dismiss:hover {
+    background: var(--surface-sunken);
+    color: var(--text);
+}
+
+/* ---- Boot screen --------------------------------------------------------------
+   index.html shows this until Blazor's first render replaces #app. Two identical rows
+   of seven pillars are stacked: a pale one, and a green copy on top that is clipped
+   from the right by however much is left to download. Blazor sets
+   --blazor-load-percentage on the document as files arrive, so the green copy "fills
+   the staircase" from left to right, with no JavaScript of ours. */
+
+.boot {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 1.1rem;
+    padding-bottom: 8vh;
+}
+
+.boot-steps {
+    display: grid;
+}
+
+.boot-row {
+    grid-area: 1 / 1;
+    display: flex;
+    align-items: flex-end;
+    gap: 5px;
+    height: 72px;
+}
+
+.boot-row span {
+    width: 22px;
+    height: calc(28% + var(--i) * 12%);
+    border-radius: 6px 6px 3px 3px;
+    background: var(--primary-soft);
+}
+
+.boot-fill {
+    clip-path: inset(0 calc(100% - var(--blazor-load-percentage, 0%)) 0 0);
+    transition: clip-path 0.15s ease-out;
+}
+
+.boot-fill span {
+    background: var(--brand-solid);
+}
+
+.boot-name {
+    margin: 0;
+    color: var(--text-soft);
+    font-size: 1.05rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
 }
 
 /* ---- Glass --------------------------------------------------------------------
