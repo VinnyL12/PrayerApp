@@ -889,6 +889,17 @@ input[type="file"]:focus-visible + label.attach-button {
     padding: 0;
 }
 
+/* The feed page is an app shell: the panel is pinned to the window's left edge, so the
+   header spans the window too, inset by the panel's own 1.5rem. The logo then sits
+   directly above the community name instead of floating in a centred column. Phones
+   stack the panel, so they keep the normal header. */
+@media (min-width: 901px) {
+    body:has(.community-layout) .topbar-inner {
+        max-width: none;
+        padding-inline: 1.5rem;
+    }
+}
+
 .community-layout {
     --topbar-h: 4rem;
     /* Grows with the window: roomy on a large monitor, never squeezing the feed on a laptop. */
@@ -2298,7 +2309,7 @@ input[type="checkbox"] {
     .community-tile, .tile-grid-2 .community-tile { flex-basis: 100%; }
     h1 { font-size: 1.65rem; }
     .page { padding-top: 1.5rem; }
-    .topbar-inner { padding: 0.6rem 1rem; gap: 0.5rem 0.75rem; }
+    .topbar-inner { padding: 0.6rem 1.25rem; gap: 0.5rem 0.75rem; }
     .nav { order: 3; width: 100%; margin: 0 -0.75rem; }
     .account { padding-left: 0; border-left: none; }
     .account-name { display: none; }
