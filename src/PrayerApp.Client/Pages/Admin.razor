@@ -84,7 +84,9 @@ else
                     }
                     else
                     {
-                        <button class="button button-small @(user.IsAdmin ? "button-quiet" : "")" disabled="@_busy"
+                        @* Quiet on every row; the solid button appears only in the confirm step
+                           above, the one place a click actually changes someone's access. *@
+                        <button class="button button-small button-quiet" disabled="@_busy"
                                 @onclick="() => _confirmId = user.Id">@(user.IsAdmin ? "Remove admin" : "Make admin")</button>
                     }
                 </div>
