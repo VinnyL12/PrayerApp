@@ -1,6 +1,7 @@
 @* A compact, horizontal community card: name, one-line description, members | action.
    Fixed height regardless of text length, so a grid of them stays even and fits on one screen. *@
-<article class="community-tile @(Community.IsMember ? "is-member" : "")">
+@* Gratitude & Answered Prayers gets the gold rim: gold already marks answered posts. *@
+<article class="community-tile @(Community.IsMember ? "is-member" : "") @(Community.Category == CommunityCategory.Gratitude ? "is-gratitude" : "")">
     <a class="tile-main" href="/communities/@Community.Id" aria-label="Open @Community.Name">
         <span class="tile-text">
             <span class="tile-name">@Community.Name</span>
