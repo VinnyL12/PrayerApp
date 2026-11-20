@@ -42,17 +42,21 @@ else
                     }
                     else if (_isAdmin && Post.ModerationStatus != ModerationStatus.Visible)
                     {
-                        <button class="link-button quiet" disabled="@_busy" @onclick="RestoreAsync">Restore</button>
+                        <button class="admin-action" disabled="@_busy" @onclick="RestoreAsync"
+                                title="Admin action: show this post to everyone again"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>Restore</button>
                     }
                     else if (Post.ModerationStatus == ModerationStatus.Visible)
                     {
-                        if (_isAdmin)
-                        {
-                            <button class="link-button quiet" disabled="@_busy" @onclick="() => _confirmHide = true">Hide</button>
-                        }
+                        @* Report is for everyone; Hide is an admin power that affects every reader,
+                           so it gets the admin shield and sits apart from Report. *@
                         if (!_reporting)
                         {
                             <button class="link-button quiet" disabled="@_busy" @onclick="() => _reporting = true">Report</button>
+                        }
+                        if (_isAdmin)
+                        {
+                            <button class="admin-action" disabled="@_busy" @onclick="() => _confirmHide = true"
+                                    title="Admin action: hide this post from everyone"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>Hide</button>
                         }
                     }
                 </span>
@@ -155,8 +159,11 @@ else
                     {
                         <div class="ack-actions">
                             <span class="acknowledged"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>@mine.ToLabel()</span>
-                            <button class="link-button quiet" disabled="@_busy" @onclick="() => _changing = true">Change</button>
-                            <button class="link-button quiet" disabled="@_busy" @onclick="RemoveAsync">Remove</button>
+                            @* Grouped so that on a narrow card they wrap together, as a pair. *@
+                            <span class="ack-edits">
+                                <button class="ack-edit" disabled="@_busy" @onclick="() => _changing = true">Change</button>
+                                <button class="ack-edit" disabled="@_busy" @onclick="RemoveAsync">Remove</button>
+                            </span>
                         </div>
                     }
                 }
