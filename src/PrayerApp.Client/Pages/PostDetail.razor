@@ -12,6 +12,9 @@
 }
 else
 {
+    @* Every page needs an h1: App.razor's FocusOnNavigate moves screen-reader focus to it
+       after navigation. The post card already shows this visually, so it's hidden. *@
+    <h1 class="visually-hidden">Post in @_post.CommunityName</h1>
     <p><a href="/communities/@_post.CommunityId">← Back to community</a></p>
 
     <PostCard Post="_post" PostChanged="p => _post = p" ShowLink="false" />

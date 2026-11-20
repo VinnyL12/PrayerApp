@@ -24,18 +24,19 @@
     --primary-soft: #d5e3db;
     --primary-softer: #dfe8e3;
     --on-primary: #ffffff;
-    --focus-ring: rgba(0, 96, 57, 0.35);
+    /* Opaque, so the ring keeps 3:1 against the page (WCAG 2.2 focus appearance). */
+    --focus-ring: #006039;
 
     /* Solid brand fills (community cards, the greeting banner). The same green in both
        themes: unlike --primary, it is a background, so it does not lighten in dark mode. */
     --brand-solid: #006039;
     --brand-solid-deep: #00472b;
     --on-brand-solid: #ffffff;
-    --on-brand-solid-soft: rgba(255, 255, 255, 0.84);
+    --on-brand-solid-soft: rgba(255, 255, 255, 0.92);
     --brand-solid-inset: #eef3f0;
     /* Answered gold for use on the solid green: light enough to read on it, and the
        same in both themes for the same reason. */
-    --answered-on-brand: #e2c27a;
+    --answered-on-brand: #f2da9e;
 
     /* Status */
     --urgent: #b4532a;
@@ -86,7 +87,7 @@
     --primary-soft: #18372a;
     --primary-softer: #15281f;
     --on-primary: #0c1410;
-    --focus-ring: rgba(79, 185, 138, 0.4);
+    --focus-ring: #4fb98a;
 
     --brand-solid-inset: #e3ebe6;
 
@@ -166,9 +167,34 @@ h1:focus {
     border-radius: 6px;
 }
 
-::selection {
-    background: var(--primary-soft);
+/* "Skip to content": the first Tab stop on every page, hidden until it has focus, so
+   keyboard users can jump past the header's six links. */
+.skip-link {
+    position: fixed;
+    top: 0.6rem;
+    left: 0.6rem;
+    z-index: 1001;
+    padding: 0.55rem 1rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--brand-solid);
+    color: var(--on-brand-solid);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transform: translateY(-200%);
 }
+
+.skip-link:focus-visible {
+    transform: none;
+    outline-color: var(--on-brand-solid);
+    outline-offset: -5px;
+}
+
+main:focus {
+    outline: none;
+}
+
 
 /* ---- Header ------------------------------------------------------------------ */
 
@@ -2884,4 +2910,26 @@ body:has(.landing) .topbar-inner {
 .theme-toggle:hover {
     background: var(--primary-soft);
     color: var(--primary);
+}
+
+/* ---- Reduced motion ------------------------------------------------------------
+   Last in the file so it overrides every hover lift above. */
+
+/* People who ask their system for less motion get no lifts, fades or slides anywhere. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .community-tile:hover,
+    .haven a:hover {
+        transform: none;
+    }
+}
+
+::selection {
+    background: var(--primary-soft);
 }

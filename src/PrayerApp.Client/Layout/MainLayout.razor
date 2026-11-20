@@ -1,5 +1,9 @@
 @inherits LayoutComponentBase
 
+@* A button, not <a href="#main">: with <base href="/">, a bare fragment link would
+   navigate to the home page instead of jumping within this one. *@
+<button type="button" class="skip-link" @onclick="SkipToContentAsync">Skip to content</button>
+
 <header class="topbar">
     <div class="topbar-inner">
         <a class="brand" href="/">
@@ -46,11 +50,16 @@
     </div>
 </header>
 
-<main class="page">
+<main class="page" id="main" tabindex="-1" @ref="_main">
     @Body
 </main>
 
 @code {
+    private ElementReference _main;
+
+    // Moves keyboard focus to the page content, like mainRef.current.focus() in React.
+    private async Task SkipToContentAsync() => await _main.FocusAsync();
+
     // "Grace Hopper" -> "GH", "grace" -> "G".
     private static string Initials(string? name) =>
         string.Concat((name ?? "?")
