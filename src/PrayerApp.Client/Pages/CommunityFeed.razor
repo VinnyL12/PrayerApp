@@ -48,7 +48,21 @@ else
 
                 @if (_community.IsMember)
                 {
-                    <PostComposer CommunityId="Id" OnPosted="OnPosted" />
+                    @* On phones the composer would fill the first screen, so it waits behind a
+                       one-line bar (CSS hides the bar on wider screens). It is hidden, not removed,
+                       so a half-written draft survives Cancel. *@
+                    @if (!_composerOpen)
+                    {
+                        <button type="button" class="share-bar" @onclick="OpenComposer"
+                                aria-controls="composer-slot" aria-expanded="false">
+                            <span>Share what's on your heart…</span>
+                            <span class="share-bar-action" aria-hidden="true">Post</span>
+                        </button>
+                    }
+                    <div id="composer-slot" class="composer-slot @(_composerOpen ? "is-open" : "")">
+                        <PostComposer @ref="_composer" CommunityId="Id" OnPosted="OnPosted" />
+                        <button type="button" class="link-button quiet composer-cancel" @onclick="CloseComposer">Cancel</button>
+                    </div>
                 }
                 else
                 {
@@ -110,6 +124,26 @@ else
 
     private void SetCollapsed(bool collapsed) => _collapsed = collapsed;
 
+    // Phone-only composer toggle. Focus has to wait until after the render that shows the
+    // text box (you can't focus a display: none element), so OpenComposer only flags it
+    // and OnAfterRenderAsync does it, like a useEffect that runs after the DOM updates.
+    private PostComposer? _composer;
+    private bool _composerOpen;
+    private bool _focusComposer;
+
+    private void OpenComposer() => (_composerOpen, _focusComposer) = (true, true);
+
+    private void CloseComposer() => _composerOpen = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusComposer && _composer is not null)
+        {
+            _focusComposer = false;
+            await _composer.FocusAsync();
+        }
+    }
+
     // Runs when the route parameter changes too (navigating community → community reuses
     // this component instance), unlike OnInitializedAsync which runs once.
     protected override async Task OnParametersSetAsync()
@@ -147,7 +181,11 @@ else
         _loading = false;
     }
 
-    private void OnPosted(PostDto post) => _posts.Insert(0, post);
+    private void OnPosted(PostDto post)
+    {
+        _posts.Insert(0, post);
+        _composerOpen = false;
+    }
 
     private void ReplacePost(PostDto updated)
     {

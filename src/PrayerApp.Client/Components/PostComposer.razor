@@ -7,7 +7,7 @@
         <DataAnnotationsValidator />
 
         <label class="visually-hidden" for="post-body">Your prayer request</label>
-        <InputTextArea id="post-body" class="input" rows="4" @bind-Value="_request.Body"
+        <InputTextArea @ref="_bodyInput" id="post-body" class="input" rows="4" @bind-Value="_request.Body"
                        placeholder="Share what's on your heart…" />
         <ValidationMessage For="() => _request.Body" class="error small" />
 
@@ -82,6 +82,7 @@
     private sealed record SelectedImage(byte[] Bytes, string ContentType, string FileName, string PreviewUrl);
 
     private CreatePostRequest _request = NewRequest();
+    private InputTextArea? _bodyInput;
     private SelectedImage? _image;
     private bool _showLink;
     private int _fileInputKey;
@@ -89,6 +90,9 @@
     private string? _error;
 
     private static CreatePostRequest NewRequest() => new() { Body = "" };
+
+    /// <summary>Puts the cursor in the text box, like inputRef.current.focus() in React.</summary>
+    public ValueTask FocusAsync() => _bodyInput?.Element?.FocusAsync() ?? ValueTask.CompletedTask;
 
     private async Task OnImageSelectedAsync(InputFileChangeEventArgs e)
     {
